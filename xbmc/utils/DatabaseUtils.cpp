@@ -329,24 +329,6 @@ int DatabaseUtils::GetFieldIndex(Field field, const MediaType &mediaType)
   return GetField(field, mediaType, true);
 }
 
-std::string DatabaseUtils::GetViewName(Field field, const MediaType& mediaType)
-{
-  if (field == FieldNone || mediaType == MediaTypeNone)
-    return std::string();
-
-  std::string strField;
-  std::string strViewName;
-  strField = GetField(field, mediaType, DatabaseQueryPartWhere);
-  if (!strField.empty())
-  {
-    size_t period = strField.find_first_of('.');
-    if (period != std::string::npos)
-      strViewName = strField.substr(0, period);
-  }
-
-  return strViewName;
-}
-
 std::string DatabaseUtils::GetNativeTable(Field field, const MediaType& mediaType)
 {
   if (mediaType != MediaTypeArtist && mediaType != MediaTypeAlbum && mediaType != MediaTypeSong &&
@@ -384,49 +366,6 @@ std::string DatabaseUtils::GetNativeTable(Field field, const MediaType& mediaTyp
     return "path";
 
   return std::string();
-}
-
-MediaType DatabaseUtils::GetFieldMediaType(Field field, const MediaType& mediaType)
-{
-  std::string strViewName;
-  strViewName = GetViewName(field, mediaType);
-  if (!strViewName.empty())
-    return mediaType; // Field belongs to view related to given media type
-
-  // Music media types can have fields from tables related to other music media types
-  if (mediaType != MediaTypeArtist && mediaType != MediaTypeAlbum && mediaType != MediaTypeSong)
-    return MediaTypeNone;
-
-  if (field == FieldSource || field == FieldSourceId || field == FieldGenre ||
-      field == FieldGenreId || field == FieldPath || field == FieldRole)
-    return MediaTypeMusic;
-  else if (field == FieldId || field == FieldArtistId || field == FieldArtistSort ||
-           field == FieldArtist || field == FieldArtistType || field == FieldGender ||
-           field == FieldDisambiguation || field == FieldArtistGenre || field == FieldStyles ||
-           field == FieldInstruments || field == FieldBiography || field == FieldBorn ||
-           field == FieldBandFormed || field == FieldDisbanded || field == FieldDied ||
-           field == FieldBornFormed || field == FieldDiedDisband || field == FieldYearsActive ||
-           field == FieldArtistMBId || field == FieldArtistLastScrape || field == FieldArtistMoods)
-    return MediaTypeArtist;
-  else if (field == FieldAlbumId || field == FieldAlbum || field == FieldAlbumArtist ||
-           field == FieldAlbumGenre || field == FieldThemes || field == FieldReview ||
-           field == FieldMusicLabel || field == FieldAlbumType || field == FieldCompilation ||
-           field == FieldAlbumMBId || field == FieldReleaseGroupMBId || field == FieldRating ||
-           field == FieldVotes || field == FieldUserRating || field == FieldAlbumLastScrape ||
-           field == FieldAlbumYear || field == FieldAlbumMoods || field == FieldAlbumStyles ||
-           field == FieldAlbumRating || field == FieldAlbumVotes || field == FieldAlbumUserRating)
-    return MediaTypeAlbum;
-  else if (field == FieldSongId || field == FieldTitle || field == FieldTrackNumber ||
-           field == FieldTime || field == FieldYear || field == FieldFilename ||
-           field == FieldPlaycount || field == FieldStartOffset || field == FieldEndOffset ||
-           field == FieldLastPlayed || field == FieldRating || field == FieldVotes ||
-           field == FieldUserRating || field == FieldComment || field == FieldMoods ||
-           field == FieldArtist || field == FieldAlbumArtist || field == FieldGenre ||
-           field == FieldDateAdded)
-    return MediaTypeSong;
-
-
-  return MediaTypeNone;
 }
 
 bool DatabaseUtils::GetSelectFields(const Fields& fields,

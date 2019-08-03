@@ -181,9 +181,7 @@ public:
   static std::string GetField(Field field, const MediaType &mediaType, DatabaseQueryPart queryPart);
   static int GetField(Field field, const MediaType &mediaType);
   static int GetFieldIndex(Field field, const MediaType &mediaType);
-  static std::string GetViewName(Field field, const MediaType& mediaType);
   static std::string GetNativeTable(Field field, const MediaType& mediaType);
-  static MediaType GetFieldMediaType(Field field, const MediaType& mediaType);
   static bool GetSelectFields(const Fields &fields, const MediaType &mediaType, FieldList &selectFields);
 
   static bool GetFieldValue(const dbiplus::field_value &fieldValue, CVariant &variantValue);
