@@ -24,16 +24,17 @@ namespace dbiplus
   class field_value;
 }
 
-typedef enum {
+typedef enum
+{
   // special fields used during sorting
   FieldUnknown = -1,
   FieldNone = 0,
-  FieldSort,        // used to store the string to use for sorting
+  FieldSort, // used to store the string to use for sorting
   FieldSortSpecial, // whether the item needs special handling (0 = no, 1 = sort on top, 2 = sort on bottom)
   FieldLabel,
   FieldFolder,
   FieldMediaType,
-  FieldRow,         // the row number in a dataset
+  FieldRow, // the row number in a dataset
 
   // special fields not retrieved from the database
   FieldSize,
@@ -135,6 +136,28 @@ typedef enum {
   FieldUserRating,
   FieldRelevance, // Used for actors' appearances
   FieldClientChannelOrder,
+  FieldArtistId,
+  FieldAlbumId,
+  FieldSongId,
+  FieldSourceId,
+  FieldGenreId,
+  FieldArtistGenre,
+  FieldArtistLastScrape,
+  FieldArtistMBId,
+  FieldArtistMoods,
+  FieldBornFormed,
+  FieldDiedDisband,
+  FieldYearsActive,
+  FieldAlbumGenre,
+  FieldAlbumLastScrape,
+  FieldAlbumMBId,
+  FieldReleaseGroupMBId,
+  FieldAlbumMoods,
+  FieldAlbumRating,
+  FieldAlbumStyles,
+  FieldAlbumUserRating,
+  FieldAlbumVotes,
+  FieldAlbumYear,
   FieldMax
 } Field;
 
@@ -158,6 +181,9 @@ public:
   static std::string GetField(Field field, const MediaType &mediaType, DatabaseQueryPart queryPart);
   static int GetField(Field field, const MediaType &mediaType);
   static int GetFieldIndex(Field field, const MediaType &mediaType);
+  static std::string GetViewName(Field field, const MediaType& mediaType);
+  static std::string GetNativeTable(Field field, const MediaType& mediaType);
+  static MediaType GetFieldMediaType(Field field, const MediaType& mediaType);
   static bool GetSelectFields(const Fields &fields, const MediaType &mediaType, FieldList &selectFields);
 
   static bool GetFieldValue(const dbiplus::field_value &fieldValue, CVariant &variantValue);

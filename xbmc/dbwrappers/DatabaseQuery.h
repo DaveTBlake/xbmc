@@ -91,7 +91,8 @@ protected:
 
 class CDatabaseQueryRuleCombination;
 
-typedef std::vector< std::shared_ptr<CDatabaseQueryRule> > CDatabaseQueryRules;
+using DatabaseQueryRulePtr = std::shared_ptr<CDatabaseQueryRule>;
+typedef std::vector<DatabaseQueryRulePtr> CDatabaseQueryRules;
 typedef std::vector< std::shared_ptr<CDatabaseQueryRuleCombination> > CDatabaseQueryRuleCombinations;
 
 class IDatabaseQueryRuleFactory
@@ -113,6 +114,7 @@ public:
   } Combination;
 
   void clear();
+  void sort();
   virtual bool Load(const TiXmlNode *node, const std::string &encoding = "UTF-8") { return false; }
   virtual bool Load(const CVariant &obj, const IDatabaseQueryRuleFactory *factory);
   virtual bool Save(TiXmlNode *parent) const;

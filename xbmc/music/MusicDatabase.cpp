@@ -11085,6 +11085,7 @@ bool CMusicDatabase::GetFilter(CDbUrl &musicUrl, Filter &filter, SortDescription
 
   // Check for playlist rules first, they may contain role criteria
   bool hasRoleRules = false;
+  bool hasSongAlbumArtitst = false;
   auto option = options.find("xsp");
   if (option != options.end())
   {
@@ -11096,6 +11097,9 @@ bool CMusicDatabase::GetFilter(CDbUrl &musicUrl, Filter &filter, SortDescription
     std::string xspWhere;
     xspWhere = xsp.GetWhereClause(*this, playlists);
     hasRoleRules = xsp.GetType() == "artists" && xspWhere.find("song_artist.idRole = role.idRole") != xspWhere.npos;
+    hasSongAlbumArtitst =
+        xsp.GetType() == "artists" && (xspWhere.find("album_artist") != xspWhere.npos ||
+                                       xspWhere.find("song_artist") != xspWhere.npos);
 
     // check if the filter playlist matches the item type
     if (xsp.GetType() == type ||
@@ -11207,7 +11211,7 @@ bool CMusicDatabase::GetFilter(CDbUrl &musicUrl, Filter &filter, SortDescription
 
   if (type == "artists")
   {
-    if (!hasRoleRules)
+    if (!hasRoleRules && !hasSongAlbumArtitst)
     { // Not an "artists" smart playlist with roles rules, so get filter from options
       if (idArtist > 0)
         filter.AppendWhere(PrepareSQL("artistview.idArtist = %d", idArtist));

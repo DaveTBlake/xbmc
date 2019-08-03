@@ -16,6 +16,8 @@
 #include "utils/Variant.h"
 #include "utils/XBMCTinyXML.h"
 
+#include <algorithm>
+
 typedef struct
 {
   char string[15];
@@ -367,6 +369,8 @@ std::string CDatabaseQueryRule::GetWhereClause(const CDatabase &db, const std::s
 
     wholeQuery += query;
   }
+  if (m_parameter.size() > 1)
+    wholeQuery = '(' + wholeQuery + ')';
 
   return wholeQuery;
 }
@@ -404,6 +408,14 @@ void CDatabaseQueryRuleCombination::clear()
   m_combinations.clear();
   m_rules.clear();
   m_type = CombinationAnd;
+}
+
+void CDatabaseQueryRuleCombination::sort()
+{
+  std::sort(m_rules.begin(), m_rules.end(),
+            [](const DatabaseQueryRulePtr rule1, const DatabaseQueryRulePtr rule2) {
+              return rule1->m_field < rule2->m_field;
+            });
 }
 
 std::string CDatabaseQueryRuleCombination::GetWhereClause(const CDatabase &db, const std::string& strType) const

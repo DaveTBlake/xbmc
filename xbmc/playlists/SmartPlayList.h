@@ -78,6 +78,12 @@ public:
   std::string GetWhereClause(const CDatabase &db,
                              const std::string& strType,
                              std::set<std::string> &referencedPlaylists) const;
+  std::string GetCombinedWhereClause(const CDatabase& db, const std::string& strType) const;
+  std::string GetArtistsWhereClause(const CDatabase& db) const;
+  std::string GetAlbumsWhereClause(const CDatabase& db) const;
+  static bool IsFieldRuleSimple(Field field, const MediaType& mediaType);
+  static bool IsFieldNative(Field field, const MediaType& mediaType, const std::string& strTable);
+  std::string CombineClause(const std::string& originial, const std::string& clause) const;
   void GetVirtualFolders(const std::string& strType,
                          std::vector<std::string> &virtualFolders) const;
 
