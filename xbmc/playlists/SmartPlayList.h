@@ -51,6 +51,10 @@ protected:
   std::string GetField(int field, const std::string& type) const override;
   int TranslateField(const char *field) const override;
   std::string TranslateField(int field) const override;
+  std::string FormatParameters(const std::string& negate,
+                               const std::string& oper,
+                               const CDatabase& db,
+                               const std::string& type) const override;
   std::string FormatParameter(const std::string &negate,
                               const std::string &oper,
                               const CDatabase &db,
@@ -84,7 +88,8 @@ public:
   std::string GetRolesWhereClause(const CDatabase& db,
                                   bool& bAlbumArtists,
                                   bool& bSongArtists,
-                                  bool& bJoinRole) const;
+                                  bool& bJoinRole,
+                                  bool& bRoleRules) const;
   static bool IsFieldRuleSimple(Field field, const MediaType& mediaType);
   static bool IsFieldNative(Field field, const MediaType& mediaType, const std::string& strTable);
   std::string CombineClause(const std::string& originial, const std::string& clause) const;

@@ -264,6 +264,29 @@ std::string CDatabaseQueryRule::FormatParameter(const std::string &operatorStrin
   return parameter;
 }
 
+std::string CDatabaseQueryRule::FormatParameters(const std::string& negate,
+                                                 const std::string& oper,
+                                                 const CDatabase& db,
+                                                 const std::string& type) const
+{
+  std::string clause;
+  for (auto it : m_parameter)
+  {
+    std::string query = '(' + FormatWhereClause(negate, oper, it, db, type) + ')';
+    if (!clause.empty())
+    {
+      if (negate.empty())
+        clause += " OR ";
+      else
+        clause += " AND ";
+    }
+    clause += query;
+  }
+  if (m_parameter.size() > 1)
+    clause = '(' + clause + ')';
+  return clause;
+}
+
 std::string CDatabaseQueryRule::GetOperatorString(SEARCH_OPERATOR op) const
 {
   std::string operatorString;
@@ -353,24 +376,9 @@ std::string CDatabaseQueryRule::GetWhereClause(const CDatabase &db, const std::s
       return db.PrepareSQL("%s BETWEEN '%s' AND '%s'", GetField(m_field, strType).c_str(), m_parameter[0].c_str(), m_parameter[1].c_str());
   }
 
-  // now the query parameter
+  // now the query for all the parameter values
   std::string wholeQuery;
-  for (std::vector<std::string>::const_iterator it = m_parameter.begin(); it != m_parameter.end(); ++it)
-  {
-    std::string query = '(' + FormatWhereClause(negate, operatorString, *it, db, strType) + ')';
-
-    if (it + 1 != m_parameter.end())
-    {
-      if (negate.empty())
-        query += " OR ";
-      else
-        query += " AND ";
-    }
-
-    wholeQuery += query;
-  }
-  if (m_parameter.size() > 1)
-    wholeQuery = '(' + wholeQuery + ')';
+  wholeQuery = FormatParameters(negate, operatorString, db, strType);
 
   return wholeQuery;
 }

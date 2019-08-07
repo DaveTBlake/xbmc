@@ -794,6 +794,100 @@ CDatabaseQueryRule::SEARCH_OPERATOR CSmartPlaylistRule::GetOperator(const std::s
   return op;
 }
 
+std::string CSmartPlaylistRule::FormatParameters(const std::string& negate,
+                                                 const std::string& oper,
+                                                 const CDatabase& db,
+                                                 const std::string& strType) const
+{
+  std::string wholeQuery;
+  std::string parameter;
+  std::string clause;
+
+  if (strType == "songs")
+  {
+    if (m_field == FieldGenre)
+    {
+      CDatabase::ExistsSubQuery existsQuery("song_genre", "song_genre.idSong = songview.idSong");
+      existsQuery.AppendJoin("JOIN genre ON genre.idGenre = song_genre.idGenre");
+      for (auto it : m_parameter)
+      {
+        clause =
+            FormatWhereClause("", oper, it, db, MediaTypeMusic); // e.g. genre.strGenre LIKE "XXX"
+        if (negate.empty())
+        {
+          // Gather genre parameters together into one clause
+          if (!wholeQuery.empty())
+            wholeQuery += " OR ";
+          wholeQuery += clause;
+        }
+        else
+        {
+          // Each parameter has separate clause
+          existsQuery.AppendWhere(clause);
+          existsQuery.BuildSQL(clause);
+          existsQuery.where = ""; // Clear where for next parameter
+          clause = negate + clause;
+          if (!wholeQuery.empty())
+            wholeQuery += " AND ";
+          wholeQuery += clause;
+        }
+      }
+      if (negate.empty() && !wholeQuery.empty())
+      {
+        // Build subquery for combined genre value clause
+        if (m_parameter.size() > 1)
+          wholeQuery = '(' + wholeQuery + ')';
+        existsQuery.AppendWhere(wholeQuery);
+        existsQuery.BuildSQL(wholeQuery);
+      }
+    }
+  }
+  else if (strType == "albums")
+  {
+    if (m_field == FieldSource)
+    {
+      CDatabase::ExistsSubQuery existsQuery("album_source",
+                                            "album_source.idAlbum = albumview.idAlbum");
+      existsQuery.AppendJoin("JOIN source ON album_source.idSource = source.idSource");
+      for (auto it : m_parameter)
+      {
+        clause =
+            FormatWhereClause("", oper, it, db, MediaTypeMusic); // e.g. source.strName LIKE "XXX"
+        if (negate.empty())
+        {
+          // Gather source parameters together into one clause
+          if (!wholeQuery.empty())
+            wholeQuery += " OR ";
+          wholeQuery += clause;
+        }
+        else
+        {
+          // Each parameter has separate clause
+          existsQuery.AppendWhere(clause);
+          existsQuery.BuildSQL(clause);
+          existsQuery.where = ""; // Clear where for next parameter
+          clause = negate + clause;
+          if (!wholeQuery.empty())
+            wholeQuery += " AND ";
+          wholeQuery += clause;
+        }
+      }
+      if (negate.empty() && !wholeQuery.empty())
+      {
+        // Build subquery for combined genre value clause
+        if (m_parameter.size() > 1)
+          wholeQuery = '(' + wholeQuery + ')';
+        existsQuery.AppendWhere(wholeQuery);
+        existsQuery.BuildSQL(wholeQuery);
+      }
+    }
+  }
+
+  if (wholeQuery.empty())
+    wholeQuery = CDatabaseQueryRule::FormatParameters(negate, oper, db, strType);
+  return wholeQuery;
+}
+
 std::string CSmartPlaylistRule::FormatParameter(const std::string &operatorString, const std::string &param, const CDatabase &db, const std::string &strType) const
 {
   // special-casing
@@ -825,9 +919,11 @@ std::string CSmartPlaylistRule::FormatWhereClause(const std::string &negate, con
   {
     table = "songview";
 
+    /*
     if (m_field == FieldGenre)
       query = negate + " EXISTS (SELECT 1 FROM song_genre, genre WHERE song_genre.idSong = " + GetField(FieldId, strType) + " AND song_genre.idGenre = genre.idGenre AND genre.strGenre" + parameter + ")";
-    else if (m_field == FieldArtist)
+    else */
+    if (m_field == FieldArtist)
       query = negate + " EXISTS (SELECT 1 FROM song_artist, artist WHERE song_artist.idSong = " + GetField(FieldId, strType) + " AND song_artist.idArtist = artist.idArtist AND artist.strArtist" + parameter + ")";
     else if (m_field == FieldAlbumArtist)
       query = negate + " EXISTS (SELECT 1 FROM album_artist, artist WHERE album_artist.idAlbum = " + table + ".idAlbum AND album_artist.idArtist = artist.idArtist AND artist.strArtist" + parameter + ")";
@@ -839,7 +935,7 @@ std::string CSmartPlaylistRule::FormatWhereClause(const std::string &negate, con
   else if (strType == "albums")
   {
     table = "albumview";
-    /*
+    /* ! @todo: tidy up
     if (m_field == FieldGenre)
       query = negate + " EXISTS (SELECT 1 FROM song, song_genre, genre WHERE song.idAlbum = " + GetField(FieldId, strType) + " AND song.idSong = song_genre.idSong AND song_genre.idGenre = genre.idGenre AND genre.strGenre" + parameter + ")";
     else if (m_field == FieldArtist)
@@ -853,8 +949,10 @@ std::string CSmartPlaylistRule::FormatWhereClause(const std::string &negate, con
         (m_operator == OPERATOR_LESS_THAN || m_operator == OPERATOR_BEFORE ||
          m_operator == OPERATOR_NOT_IN_THE_LAST))
       query = GetField(m_field, strType) + " is NULL or " + GetField(m_field, strType) + parameter;
+    /*
     else if (m_field == FieldSource)
       query = negate + " EXISTS (SELECT 1 FROM album_source, source WHERE album_source.idAlbum = " + GetField(FieldId, strType) + " AND album_source.idSource = source.idSource AND source.strName" + parameter + ")";
+      */
     else if (m_field == FieldDiscTitle)
       query = negate +
               " EXISTS (SELECT 1 FROM song WHERE song.idAlbum = " + GetField(FieldId, strType) +
@@ -863,7 +961,10 @@ std::string CSmartPlaylistRule::FormatWhereClause(const std::string &negate, con
   else if (strType == "artists")
   {
     table = "artistview";
-
+    /*
+    if (m_field == FieldGenre)
+      query = negate + " EXISTS (SELECT 1 FROM song_genre JOIN genre ON song_genre.idSong = song.idSong AND song_genre.idGenre = genre.idGenre AND genre.strGenre" + parameter + ")";
+    */
   }
   else if (strType == "movies")
   {
@@ -1075,7 +1176,8 @@ std::string CSmartPlaylistRuleCombination::GetCombinedWhereClause(const CDatabas
 std::string CSmartPlaylistRuleCombination::GetRolesWhereClause(const CDatabase& db,
                                                                bool& bAlbumArtists,
                                                                bool& bSongArtists,
-                                                               bool& bJoinRole) const
+                                                               bool& bJoinRole,
+                                                               bool& bRoleRules) const
 {
   bool bWildRoleRule = false;
   bool bAlbumartistRule = false;
@@ -1092,6 +1194,7 @@ std::string CSmartPlaylistRuleCombination::GetRolesWhereClause(const CDatabase& 
     // song and album rules in artists lists, song and artists rules in albums etc.
     if ((*it)->m_field == FieldRole)
     {
+      bRoleRules = true;
       if (StringUtils::EqualsNoCase((*it)->m_parameter.at(0), "albumartist"))
       {
         // Use fake role "album_artist" when AND combo to skip song artists (guest appearences)
@@ -1140,6 +1243,7 @@ std::string CSmartPlaylistRuleCombination::GetRolesWhereClause(const CDatabase& 
   if (!bWildRoleRule && roleRules.empty())
   {
     bJoinRole = false;
+    bRoleRules = false;
     return "song_artist.idRole = 1";
   }
   else
@@ -1176,6 +1280,8 @@ std::string CSmartPlaylistRuleCombination::GetRolesWhereClause(const CDatabase& 
         }
       }
     }
+    if (!roleClause.empty() && bSongArtists)
+      bAlbumArtists = false;
     return roleClause;
   }
 
@@ -1191,8 +1297,9 @@ std::string CSmartPlaylistRuleCombination::GetArtistsWhereClause(const CDatabase
   bool bAlbumArtists = true;
   bool bSongArtists = true;
   bool bJoinRole = false;
+  bool bRoleRules = false;
   std::string roleClause;
-  roleClause = GetRolesWhereClause(db, bAlbumArtists, bSongArtists, bJoinRole);
+  roleClause = GetRolesWhereClause(db, bAlbumArtists, bSongArtists, bJoinRole, bRoleRules);
 
   // Translate the rules into SQL
   CDatabase::ExistsSubQuery albumArtistSub("album_artist",
@@ -1209,33 +1316,22 @@ std::string CSmartPlaylistRuleCombination::GetArtistsWhereClause(const CDatabase
     songArtistSub.AppendWhere(roleClause);
   }
 
-  bool bAlbumArtistNeedSong =
-      false; // Will need song table as well as album_artist (which has idAlbum)
-  bool bSongArtistNeedSong =
-      false; // Will need song table as well as song_artist (which has idSong)
+  bool bAlbumArtistNeedSong = false; // Need song table as well as album_artist (which has idAlbum)
+  bool bAlbumArtistNeedAlbum = false; // Nneed album table as well as album_artist
+  bool bSongArtistNeedSong = false; // Need song table as well as song_artist (which has idSong)
+  bool bSongArtistNeedAlbum = false; // Need album table as well as song_artist (which has idSong)
 
   std::string songSubclause;
-  std::string sourceSubclause;
+  std::string albumSubclause;
   for (CDatabaseQueryRules::const_iterator it = m_rules.begin(); it != m_rules.end(); ++it)
   {
     std::string currentRule;
-    if ((*it)->m_field == FieldGenre)
-    {
-      std::string genrequery = (*it)->GetWhereClause(db, MediaTypeMusic);
-      if (!genrequery.empty())
-      {
-        CDatabase::ExistsSubQuery songGenreX("song_genre", "song_genre.idSong = song.idSong");
-        songGenreX.AppendJoin("JOIN genre ON genre.idGenre = song_genre.idGenre");
-        songGenreX.AppendWhere(genrequery);
-        songGenreX.BuildSQL(currentRule);
-        songSubclause = CombineClause(songSubclause, currentRule);
-      }
-    }
-    else if ((*it)->m_field == FieldPath)
+    if ((*it)->m_field == FieldPath)
     {
       std::string pathquery = (*it)->GetWhereClause(db, MediaTypeMusic);
       if (!pathquery.empty())
       {
+        // Process FieldPath rules separately from song rules because using song not songview
         CDatabase::ExistsSubQuery songPathX("path", "path.idPath = song.idPath");
         songPathX.AppendWhere(pathquery);
         songPathX.BuildSQL(currentRule);
@@ -1243,39 +1339,87 @@ std::string CSmartPlaylistRuleCombination::GetArtistsWhereClause(const CDatabase
         bSongArtistNeedSong = true;
       }
     }
+    // ! @todo: Decide how to process these - using "songs" to get negation etc.
+    /*else if ((*it)->m_field == FieldGenre)
+    {
+    // Process FieldGenre rules separately from song rules because can do without song table
+    /*
+    std::string genrequery = (*it)->GetWhereClause(db, MediaTypeMusic);
+    if (!genrequery.empty())
+    {
+    CDatabase::ExistsSubQuery songGenreX("song_genre", "song_genre.idSong = song.idSong");
+    songGenreX.AppendJoin("JOIN genre ON genre.idGenre = song_genre.idGenre");
+    songGenreX.AppendWhere(genrequery);
+    songGenreX.BuildSQL(currentRule);
+    songSubclause = CombineClause(songSubclause, currentRule);
+    }
+    std::string clause;
+    if ((*it)->m_parameter.size() > 1 &&
+    ((*it)->m_operator != CDatabaseQueryRule::OPERATOR_DOES_NOT_CONTAIN) &&
+    ((*it)->m_operator != CDatabaseQueryRule::OPERATOR_DOES_NOT_EQUAL))
+    {
+    // EXISTS (a OR b OR c...)
+    clause = (*it)->GetWhereClause(db, MediaTypeMusic);
+    if (!clause.empty())
+    {
+    CDatabase::ExistsSubQuery songGenreX("song_genre", "song_genre.idSong = song.idSong");
+    songGenreX.AppendJoin("JOIN genre ON genre.idGenre = song_genre.idGenre");
+    songGenreX.AppendWhere(clause);
+    songGenreX.BuildSQL(clause);
+    }
+    }
+    else
+    {
+    //<NOT> EXISTS(a) AND/OR  <NOT> EXISTS(b) <NOT> EXISTS(c)...
+    clause = (*it)->GetWhereClause(db, "songs");
+    StringUtils::Replace(clause, "songview", "song");
+    }
+    songSubclause = CombineClause(songSubclause, clause);
+    }
     else if ((*it)->m_field == FieldSource)
     {
       std::string sourcequery = (*it)->GetWhereClause(db, MediaTypeMusic);
       if (!sourcequery.empty())
       {
-        CDatabase::ExistsSubQuery sourceAA("album_source",
-                                           "album_source.idAlbum = album_artist.idAlbum");
+        // Process FieldSource rules separately from album rules because can do without album table
+        CDatabase::ExistsSubQuery sourceAA("album_source", "album_source.idAlbum = album.idAlbum");
         sourceAA.AppendJoin("JOIN source ON source.idSource = album_source.idSource");
         sourceAA.AppendWhere(sourcequery);
         sourceAA.BuildSQL(currentRule);
-        sourceSubclause = CombineClause(sourceSubclause, currentRule);
+        albumSubclause = CombineClause(albumSubclause, currentRule);
         bSongArtistNeedSong = true;
       }
-    }
+    } */
     else if (IsFieldNative((Field)(*it)->m_field, MediaTypeArtist, "song"))
     { //song field
       std::string songquery = (*it)->GetWhereClause(db, "songs");
       StringUtils::Replace(songquery, "songview", "song");
       songSubclause = CombineClause(songSubclause, songquery);
+      if ((*it)->m_field != FieldGenre) // Lookup genre on idSong
+        bSongArtistNeedSong = true;
+    }
+    else if (IsFieldNative((Field)(*it)->m_field, MediaTypeArtist, "album"))
+    { //album field
+      std::string albumquery = (*it)->GetWhereClause(db, "albums");
+      StringUtils::Replace(albumquery, "albumview", "album");
+      albumSubclause = CombineClause(albumSubclause, albumquery);
+      bSongArtistNeedAlbum = true;
       bSongArtistNeedSong = true;
+      if ((*it)->m_field != FieldSource) // Lookup on idAlbum
+        bAlbumArtistNeedAlbum = true;
     }
   }
 
-  bAlbumArtistNeedSong = (!songSubclause.empty() || (!roleClause.empty() && !bSongArtists));
+  // Have song clause (inc genre) or role rules that needs to be applied for album artist
+  bAlbumArtistNeedSong = (!songSubclause.empty() || (bJoinRole && !bSongArtists));
 
   std::string strSQL;
   std::string album_artistClause;
   std::string song_artistClause;
 
-  album_artistClause = sourceSubclause;
-  if (bAlbumArtistNeedSong) // !songSubclause.empty()
+  if (bAlbumArtistNeedSong)
   {
-    if (!roleClause.empty() && !bSongArtists)
+    if (bJoinRole && !bSongArtists)
     {
       // Album artists only with other role rules.
       // Need song_artist table in song subquery to apply the role rules
@@ -1294,16 +1438,35 @@ std::string CSmartPlaylistRuleCombination::GetArtistsWhereClause(const CDatabase
     CDatabase::ExistsSubQuery songAASub("song", "song.idAlbum = album_artist.idAlbum");
     songAASub.AppendWhere("(" + songSubclause + ")");
     songAASub.BuildSQL(strSQL);
-    album_artistClause = CombineClause(sourceSubclause, strSQL);
+    album_artistClause = CombineClause(album_artistClause, strSQL);
   }
+  if (bAlbumArtistNeedAlbum)
+  {
+    //album_artistClause contains songAASub
+    album_artistClause = CombineClause(album_artistClause, albumSubclause);
+    CDatabase::ExistsSubQuery albumAASub("album", "album.idAlbum = album_artist.idAlbum");
+    albumAASub.AppendWhere("(" + album_artistClause + ")");
+    albumAASub.BuildSQL(album_artistClause);
+  }
+  else
+    StringUtils::Replace(album_artistClause, "album.idAlbum", "album_artist.idAlbum");
   if (!album_artistClause.empty())
     albumArtistSub.AppendWhere("(" + album_artistClause + ")");
 
+
+  if (bSongArtistNeedAlbum)
+  {
+    CDatabase::ExistsSubQuery albumSASub("album", "album.idAlbum = song.idAlbum");
+    albumSASub.AppendWhere("(" + albumSubclause + ")");
+    albumSASub.BuildSQL(albumSubclause);
+  }
+  else
+    StringUtils::Replace(albumSubclause, "album.idAlbum", "song.idAlbum");
+
   if (bSongArtistNeedSong)
   {
-    StringUtils::Replace(sourceSubclause, "album_artist.idAlbum", "song.idAlbum");
     CDatabase::ExistsSubQuery songSASub("song", "song.idSong = song_artist.idSong");
-    song_artistClause = CombineClause(songSubclause, sourceSubclause);
+    song_artistClause = CombineClause(songSubclause, albumSubclause);
     songSASub.AppendWhere("(" + song_artistClause + ")");
     songSASub.BuildSQL(song_artistClause);
   }
@@ -1330,7 +1493,7 @@ std::string CSmartPlaylistRuleCombination::GetArtistsWhereClause(const CDatabase
     {
       if (!rule.empty())
       {
-        if (roleClause.empty() || m_type != CombinationAnd)
+        if (!bJoinRole || m_type != CombinationAnd)
           rule += " OR ";
         else
           rule += " AND ";
@@ -1351,7 +1514,9 @@ std::string CSmartPlaylistRuleCombination::GetAlbumsWhereClause(const CDatabase&
   bool bAlbumArtists = true;
   bool bSongArtists = true;
   bool bJoinRole = false;
-  std::string roleClause = GetRolesWhereClause(db, bAlbumArtists, bSongArtists, bJoinRole);
+  bool bRoleRules = false;
+  std::string roleClause =
+      GetRolesWhereClause(db, bAlbumArtists, bSongArtists, bJoinRole, bRoleRules);
 
   // Translate the rules into SQL
   CDatabase::ExistsSubQuery songSub("song", "song.idAlbum = albumview.idAlbum");
@@ -1413,6 +1578,7 @@ std::string CSmartPlaylistRuleCombination::GetAlbumsWhereClause(const CDatabase&
 
   std::string strSQL;
 
+  // FieldAlbumartist rules overrides any NOT "albumartist" role rule
   if ((bAlbumArtists && !artistSubclause.empty()) || !albumartistSubclause.empty())
   {
     albumartistSubclause = CombineClause(artistSubclause, albumartistSubclause);
@@ -1422,24 +1588,27 @@ std::string CSmartPlaylistRuleCombination::GetAlbumsWhereClause(const CDatabase&
       rule += strSQL;
   }
 
-  if (!songSubclause.empty() || (bSongArtists && !artistSubclause.empty()))
+  // FieldArtist rules overrides any NOT "artist" role rule
+  // Add FieldArtist or role rules to song subquery clause
+  if (!artistSubclause.empty() || (bSongArtists && bRoleRules))
   {
     if (!artistSubclause.empty())
-    {
       songArtistSub.AppendWhere("(" + artistSubclause + ")");
-      songArtistSub.BuildSQL(strSQL);
-      songSubclause = CombineClause(songSubclause, strSQL);
-    }
+    songArtistSub.BuildSQL(strSQL);
+    songSubclause = CombineClause(songSubclause, strSQL);
+  }
+  if (!songSubclause.empty())
+  {
     songSub.AppendWhere("(" + songSubclause + ")");
     songSub.BuildSQL(strSQL);
     if (!strSQL.empty())
     {
       if (!rule.empty())
       {
-        if (roleClause.empty() || m_type != CombinationAnd)
-          rule += " OR ";
-        else
+        if (m_type == CombinationAnd)
           rule += " AND ";
+        else
+          rule += " OR ";
       }
     }
     rule += strSQL;
