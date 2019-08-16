@@ -1510,7 +1510,7 @@ std::string CSmartPlaylistRuleCombination::GetAlbumsWhereClause(const CDatabase&
   // Processing for FieldArtist, FieldAlbumArtist and FieldPath fields, and other "artists" or "songs" rule fields
   // FieldGenre is handled with the other "songs"  rule fields
 
-  // Examine what role fields we have
+  // Examine what role fields and build roles clause
   bool bAlbumArtists = true;
   bool bSongArtists = true;
   bool bJoinRole = false;
@@ -1518,28 +1518,11 @@ std::string CSmartPlaylistRuleCombination::GetAlbumsWhereClause(const CDatabase&
   std::string roleClause =
       GetRolesWhereClause(db, bAlbumArtists, bSongArtists, bJoinRole, bRoleRules);
 
-  // Translate the rules into SQL
-  CDatabase::ExistsSubQuery songSub("song", "song.idAlbum = albumview.idAlbum");
-  CDatabase::ExistsSubQuery albumArtistSub("album_artist",
-                                           "album_artist.idAlbum = albumview.idAlbum");
-  albumArtistSub.AppendJoin("JOIN artist ON artist.idArtist = album_artist.idArtist");
-
-  CDatabase::ExistsSubQuery songArtistSub("song_artist", "song_artist.idSong = song.idSong");
-  songArtistSub.AppendJoin("JOIN artist ON  artist.idArtist = song_artist.idArtist");
-
-  if (!roleClause.empty())
-  {
-    if (bJoinRole)
-    {
-      roleClause = "(" + roleClause + ")";
-      songArtistSub.AppendJoin("JOIN role ON song_artist.idRole = role.idRole");
-    }
-    songArtistSub.AppendWhere(roleClause);
-  }
-
+  // Examine "artists" and "songs" rules, building basic SQL clauses
   std::string songSubclause;
   std::string artistSubclause;
-  std::string albumartistSubclause;
+  std::string albumartistField;
+  std::string artistField;
   for (CDatabaseQueryRules::const_iterator it = m_rules.begin(); it != m_rules.end(); ++it)
   {
     std::string currentRule;
@@ -1555,18 +1538,16 @@ std::string CSmartPlaylistRuleCombination::GetAlbumsWhereClause(const CDatabase&
         songSubclause = CombineClause(songSubclause, currentRule);
       }
     }
-    // FieldAlbumArtist rules apply only via album_artist
-    else if ((*it)->m_field == FieldAlbumArtist)
-    {
-      std::string artistquery = (*it)->GetWhereClause(db, "artist");
-      StringUtils::Replace(artistquery, "artistview", "artist");
-      albumartistSubclause = CombineClause(albumartistSubclause, artistquery);
-    }
     else if (IsFieldNative((Field)(*it)->m_field, MediaTypeAlbum, "artist"))
-    { //"artists" fields including FieldArtist
+    { //"artists" fields including FieldArtist and FieldAlbumArtist
       std::string artistquery = (*it)->GetWhereClause(db, "artist");
       StringUtils::Replace(artistquery, "artistview", "artist");
-      artistSubclause = CombineClause(artistSubclause, artistquery);
+      if ((*it)->m_field == FieldArtist)
+        artistField = CombineClause(artistField, artistquery);
+      else if ((*it)->m_field == FieldAlbumArtist)
+        albumartistField = CombineClause(albumartistField, artistquery);
+      else
+        artistSubclause = CombineClause(artistSubclause, artistquery);
     }
     else if (IsFieldNative((Field)(*it)->m_field, MediaTypeAlbum, "song"))
     { //"songs" field including FieldGenre
@@ -1576,43 +1557,117 @@ std::string CSmartPlaylistRuleCombination::GetAlbumsWhereClause(const CDatabase&
     }
   }
 
-  std::string strSQL;
+  // Album artists only with other role rules flag
+  bool bAlbumartistAndRole =
+      bRoleRules && (!albumartistField.empty() || (bAlbumArtists && !bSongArtists));
 
-  // FieldAlbumartist rules overrides any NOT "albumartist" role rule
-  if ((bAlbumArtists && !artistSubclause.empty()) || !albumartistSubclause.empty())
+  // Translate the rules into SQL subqueries
+  CDatabase::ExistsSubQuery songSub("song", "song.idAlbum = albumview.idAlbum");
+  CDatabase::ExistsSubQuery albumArtistSub("album_artist",
+                                           "album_artist.idAlbum = albumview.idAlbum");
+  albumArtistSub.AppendJoin("JOIN artist ON artist.idArtist = album_artist.idArtist");
+
+  CDatabase::ExistsSubQuery songArtistSub("song_artist", "song_artist.idSong = song.idSong");
+  if (bAlbumartistAndRole)
+    // Album artists only with other role rules, add correlation to album_artist table
+    songArtistSub.AppendWhere("song_artist.idArtist = album_artist.idArtist");
+  else if (!artistSubclause.empty() || !albumartistField.empty() || !artistField.empty())
+    // JOIN artist when have artist clause (may be just role rule)
+    songArtistSub.AppendJoin("JOIN artist ON  artist.idArtist = song_artist.idArtist");
+  if (!roleClause.empty())
   {
-    albumartistSubclause = CombineClause(artistSubclause, albumartistSubclause);
-    albumArtistSub.AppendWhere("(" + albumartistSubclause + ")");
-    albumArtistSub.BuildSQL(strSQL);
-    if (!strSQL.empty())
-      rule += strSQL;
+    if (bJoinRole)
+    {
+      roleClause = "(" + roleClause + ")";
+      songArtistSub.AppendJoin("JOIN role ON song_artist.idRole = role.idRole");
+    }
+    songArtistSub.AppendWhere(roleClause);
   }
 
-  // FieldArtist rules overrides any NOT "artist" role rule
-  // Add FieldArtist or role rules to song subquery clause
-  if (!artistSubclause.empty() || (bSongArtists && bRoleRules))
-  {
-    if (!artistSubclause.empty())
-      songArtistSub.AppendWhere("(" + artistSubclause + ")");
-    songArtistSub.BuildSQL(strSQL);
-    songSubclause = CombineClause(songSubclause, strSQL);
+  // Build combined artist clause for inclusion in album and song artist subqueries
+  std::string artistClauseAlbum;
+  std::string artistClauseSong;
+  if (!albumartistField.empty() && !artistField.empty())
+  { // Separate artist clauses for song and album artist routes
+    artistClauseAlbum = CombineClause(artistSubclause, albumartistField);
+    artistClauseSong = CombineClause(artistSubclause, artistField);
   }
+  else
+  {
+    artistSubclause = CombineClause(artistSubclause, albumartistField);
+    artistSubclause = CombineClause(artistSubclause, artistField);
+    artistClauseAlbum = artistSubclause;
+    artistClauseSong = artistSubclause;
+  }
+
+  // Build song_artist subquery clause
+  std::string songartistSubclause;
+  if (!artistClauseSong.empty() || bRoleRules)
+  {
+    if (!artistClauseSong.empty() && !bAlbumartistAndRole)
+      songArtistSub.AppendWhere("(" + artistClauseSong + ")");
+    songArtistSub.BuildSQL(songartistSubclause);
+  }
+
+  //Build full song subquery SQL (with and without song_artist)
+  std::string songSubSQLNoArtist;
+  std::string songSubSQL;
   if (!songSubclause.empty())
   {
     songSub.AppendWhere("(" + songSubclause + ")");
-    songSub.BuildSQL(strSQL);
-    if (!strSQL.empty())
-    {
-      if (!rule.empty())
-      {
-        if (m_type == CombinationAnd)
-          rule += " AND ";
-        else
-          rule += " OR ";
-      }
-    }
-    rule += strSQL;
+    songSub.BuildSQL(songSubSQLNoArtist);
   }
+  songSubSQL = CombineClause(songSubclause, songartistSubclause);
+  if (!songSubSQL.empty())
+  {
+    songSub.where = ""; // Clear where for song + song_artist clause
+    songSub.AppendWhere("(" + songSubSQL + ")");
+    songSub.BuildSQL(songSubSQL);
+  }
+
+  // Build album_artist subquery clause
+  std::string albumartistSubclause;
+  if (!artistClauseAlbum.empty())
+    albumArtistSub.AppendWhere("(" + artistClauseAlbum + ")");
+  // Album artists only with other role rules.
+  // Song/song_artist subquery is inside album_artist subquery
+  if (bAlbumartistAndRole)
+    albumArtistSub.AppendWhere(songSubSQL);
+  albumArtistSub.BuildSQL(albumartistSubclause);
+  //Role rules  but not "albumartist" and no  FieldAlbumartist
+  if (bRoleRules && !bAlbumArtists && albumartistField.empty())
+    albumartistSubclause.clear();
+
+  // An "albumartist" role rule same as FieldAlbumartist
+  // FieldAlbumartist rules overrides any NOT "albumartist" role rule
+  if (!albumartistField.empty() || (bAlbumArtists && !bSongArtists))
+  {
+    if (bRoleRules)
+      rule = albumartistSubclause;
+    else if (!artistField.empty() || !bAlbumArtists)
+      rule = CombineClause(albumartistSubclause, songSubSQL);
+    else
+      rule = CombineClause(albumartistSubclause, songSubSQLNoArtist);
+  }
+  else if (!songartistSubclause.empty())
+  {
+    // FieldArtist, role or other Artist rules
+    if (m_type != CombinationAnd)
+    {
+      rule = CombineClause(albumartistSubclause, songSubSQL);
+    }
+    else
+    {
+      //Repeat song rules for album and song artist routes
+      rule = CombineClause(albumartistSubclause, songSubSQLNoArtist);
+      if (!rule.empty())
+        rule += " OR ";
+      rule += songSubSQL;
+    }
+  }
+  else if (!songSubSQL.empty())
+    rule = songSubSQL;
+
   return rule;
 }
 
