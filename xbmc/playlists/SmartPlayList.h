@@ -85,6 +85,7 @@ public:
   std::string GetCombinedWhereClause(const CDatabase& db, const std::string& strType) const;
   std::string GetArtistsWhereClause(const CDatabase& db) const;
   std::string GetAlbumsWhereClause(const CDatabase& db) const;
+  std::string GetSongsWhereClause(const CDatabase& db) const;
   std::string GetRolesWhereClause(const CDatabase& db,
                                   bool& bAlbumArtists,
                                   bool& bSongArtists,
