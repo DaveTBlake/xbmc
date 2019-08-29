@@ -11083,6 +11083,315 @@ bool CMusicDatabase::GetFilter(CDbUrl &musicUrl, Filter &filter, SortDescription
   std::string type = musicUrl.GetType();
   const CUrlOptions::UrlOptions& options = musicUrl.GetOptions();
 
+  //Process role options, common to artist and album type filtering
+  int idRole = 1; // Default restrict song_artist to "artists" only, no other roles.
+  auto option = options.find("roleid");
+  if (option != options.end())
+    idRole = static_cast<int>(option->second.asInteger());
+  else
+  {
+    option = options.find("role");
+    if (option != options.end())
+    {
+      if (option->second.asString() == "all" || option->second.asString() == "%")
+        idRole = -1000; //All roles
+      else
+        idRole = GetRoleByName(option->second.asString());
+    }
+  }
+
+  int idArtist = -1, idGenre = -1, idAlbum = -1, idSong = -1;
+  int idSource = -1;
+  int iYear = -1;
+  bool albumArtistsOnly = false;
+  std::string artistname;
+
+  // Process albumartistsonly option
+  option = options.find("albumartistsonly");
+  if (option != options.end())
+    albumArtistsOnly = option->second.asBoolean();
+
+  // Process genre option
+  option = options.find("genreid");
+  if (option != options.end())
+    idGenre = static_cast<int>(option->second.asInteger());
+  else
+  {
+    option = options.find("genre");
+    if (option != options.end())
+      idGenre = GetGenreByName(option->second.asString());
+  }
+
+  // Process source option
+  option = options.find("sourceid");
+  if (option != options.end())
+    idSource = static_cast<int>(option->second.asInteger());
+  else
+  {
+    option = options.find("source");
+    if (option != options.end())
+      idSource = GetSourceByName(option->second.asString());
+  }
+
+  // Process album option
+  option = options.find("albumid");
+  if (option != options.end())
+    idAlbum = static_cast<int>(option->second.asInteger());
+  else
+  {
+    option = options.find("album");
+    if (option != options.end())
+      idAlbum = GetAlbumByName(option->second.asString());
+  }
+
+  // Process artist option
+  option = options.find("artistid");
+  if (option != options.end())
+    idArtist = static_cast<int>(option->second.asInteger());
+  else
+  {
+    option = options.find("artist");
+    if (option != options.end())
+    {
+      idArtist = GetArtistByName(option->second.asString());
+      if (idArtist == -1)
+      { // not found with that name, or more than one found as artist name is not unique
+        artistname = option->second.asString();
+      }
+    }
+  }
+
+  // Process song option
+  option = options.find("songid");
+  if (option != options.end())
+    idSong = static_cast<int>(option->second.asInteger());
+
+  // Process year option
+  option = options.find("year");
+  if (option != options.end())
+    iYear = static_cast<int>(option->second.asInteger());
+
+  // Check for playlist rules
+  CSmartPlaylist xsp;
+  bool xsploaded = false;
+  option = options.find("xsp");
+  if (option != options.end())
+  {
+    if (!xsp.LoadFromJson(option->second.asString()))
+      return false;
+    xsploaded = true;
+  }
+
+  CSmartPlaylist playlist;
+  playlist.SetType(type);
+  if (xsploaded)
+  {
+    // check if the filter playlist matches the item type
+    if (xsp.GetType() == type || (xsp.GetGroup() == type && !xsp.IsGroupMixed()))
+    {
+      if (xsp.GetLimit() > 0)
+        sorting.limitEnd = xsp.GetLimit();
+      if (xsp.GetOrder() != SortByNone)
+        sorting.sortBy = xsp.GetOrder();
+      sorting.sortOrder = xsp.GetOrderAscending() ? SortOrderAscending : SortOrderDescending;
+      if (CServiceBroker::GetSettingsComponent()->GetSettings()->GetBool(
+              CSettings::SETTING_FILELISTS_IGNORETHEWHENSORTING))
+        sorting.sortAttributes = SortAttributeIgnoreArticle;
+    }
+  }
+  // Convert options into playlist rules
+  // For a node type some ID options preclude other rules
+  bool bSkipOtherRules = true;
+  if (type == "artists")
+  {
+    if (idArtist > 0)
+      playlist.AddRule(FieldArtistId, CDatabaseQueryRule::SEARCH_OPERATOR::OPERATOR_EQUALS,
+                       StringUtils::Format("%i", idArtist));
+    else if (idAlbum > 0)
+      playlist.AddRule(FieldAlbumId, CDatabaseQueryRule::SEARCH_OPERATOR::OPERATOR_EQUALS,
+                       StringUtils::Format("%i", idAlbum));
+    else if (idSong > 0)
+      playlist.AddRule(FieldSongId, CDatabaseQueryRule::SEARCH_OPERATOR::OPERATOR_EQUALS,
+                       StringUtils::Format("%i", idSong));
+    else
+      bSkipOtherRules = false;
+    // Ensure "artists" have default role applied
+    if (idRole == 1)
+      playlist.AddRule(FieldRoleId, CDatabaseQueryRule::SEARCH_OPERATOR::OPERATOR_EQUALS,
+                       StringUtils::Format("%i", idRole));
+  }
+  else if (type == "albums")
+  {
+    if (idSong > 0)
+      playlist.AddRule(FieldSongId, CDatabaseQueryRule::SEARCH_OPERATOR::OPERATOR_EQUALS,
+                       StringUtils::Format("%i", idSong));
+    else if (idAlbum > 0)
+      playlist.AddRule(FieldAlbumId, CDatabaseQueryRule::SEARCH_OPERATOR::OPERATOR_EQUALS,
+                       StringUtils::Format("%i", idAlbum));
+    else
+    {
+      bSkipOtherRules = false;
+      if (idArtist > 0)
+        playlist.AddRule(FieldArtistId, CDatabaseQueryRule::SEARCH_OPERATOR::OPERATOR_EQUALS,
+                         StringUtils::Format("%i", idArtist));
+      else if (!artistname.empty())
+        playlist.AddRule(FieldArtist, CDatabaseQueryRule::SEARCH_OPERATOR::OPERATOR_EQUALS,
+                         artistname);
+
+      // Exclude any single albums (aka empty tagged albums)
+      // This causes "albums"  media filter artist selection to only offer album artists
+      option = options.find("show_singles");
+      if (option == options.end() || !option->second.asBoolean())
+        playlist.AddRule(FieldSingle, CDatabaseQueryRule::SEARCH_OPERATOR::OPERATOR_FALSE);
+    }
+  }
+  else if (type == "songs" || type == "singles")
+  {
+    if (idSong > 0)
+      playlist.AddRule(FieldSongId, CDatabaseQueryRule::SEARCH_OPERATOR::OPERATOR_EQUALS,
+                       StringUtils::Format("%i", idSong));
+    else
+    {
+      bSkipOtherRules = false;
+      if (idAlbum > 0)
+        playlist.AddRule(FieldAlbumId, CDatabaseQueryRule::SEARCH_OPERATOR::OPERATOR_EQUALS,
+                         StringUtils::Format("%i", idAlbum));
+      if (idArtist > 0)
+        playlist.AddRule(FieldArtistId, CDatabaseQueryRule::SEARCH_OPERATOR::OPERATOR_EQUALS,
+                         StringUtils::Format("%i", idArtist));
+      else if (!artistname.empty())
+        playlist.AddRule(FieldArtist, CDatabaseQueryRule::SEARCH_OPERATOR::OPERATOR_EQUALS,
+                         artistname);
+
+      option = options.find("singles");
+      if (option != options.end())
+      {
+        if (option->second.asBoolean())
+          playlist.AddRule(FieldSingle, CDatabaseQueryRule::SEARCH_OPERATOR::OPERATOR_TRUE);
+        else
+          playlist.AddRule(FieldSingle, CDatabaseQueryRule::SEARCH_OPERATOR::OPERATOR_FALSE);
+      }
+      /* ! @todo: check this logic
+      filter.AppendWhere(PrepareSQL("songview.idAlbum %sIN (SELECT idAlbum FROM album WHERE strReleaseType = '%s')",
+      option->second.asBoolean() ? "" : "NOT ",
+      CAlbum::ReleaseTypeToString(CAlbum::Single).c_str())); */
+    }
+  }
+  if (!bSkipOtherRules)
+  {
+    if (albumArtistsOnly)
+      playlist.AddRule(FieldRole, CDatabaseQueryRule::SEARCH_OPERATOR::OPERATOR_EQUALS,
+                       "albumartist");
+    if (idRole > 1 || idRole < -1)
+      playlist.AddRule(FieldRoleId, CDatabaseQueryRule::SEARCH_OPERATOR::OPERATOR_EQUALS,
+                       StringUtils::Format("%i", idRole));
+    if (idGenre > 0)
+      playlist.AddRule(FieldGenreId, CDatabaseQueryRule::SEARCH_OPERATOR::OPERATOR_EQUALS,
+                       StringUtils::Format("%i", idGenre));
+    if (idSource > 0)
+      playlist.AddRule(FieldSourceId, CDatabaseQueryRule::SEARCH_OPERATOR::OPERATOR_EQUALS,
+                       StringUtils::Format("%i", idSource));
+    if (iYear > 0)
+      playlist.AddRule(FieldYear, CDatabaseQueryRule::SEARCH_OPERATOR::OPERATOR_EQUALS,
+                       StringUtils::Format("%i", iYear));
+
+    option = options.find("compilation");
+    if (option != options.end())
+    {
+      if (option->second.asBoolean())
+        playlist.AddRule(FieldCompilation, CDatabaseQueryRule::SEARCH_OPERATOR::OPERATOR_TRUE);
+      else
+        playlist.AddRule(FieldCompilation, CDatabaseQueryRule::SEARCH_OPERATOR::OPERATOR_FALSE);
+    }
+
+    if (xsploaded)
+    {
+      // Copy xsp rules, applying options overrides other rules that can be skipped
+      // ! @todo: recursively unpack playlists inside playlists, and handle OR combinations
+      for (CDatabaseQueryRules::const_iterator it = xsp.m_ruleCombination.m_rules.begin();
+           it != xsp.m_ruleCombination.m_rules.end(); ++it)
+      {
+        if ((idRole > 1 || idRole < -1) && (*it)->m_field == FieldRole)
+          continue;
+        if (idArtist > 0 &&
+            xsp.m_ruleCombination.IsFieldRuleSimple((Field)(*it)->m_field, MediaTypeArtist))
+          continue;
+        if (idAlbum > 0 &&
+            xsp.m_ruleCombination.IsFieldRuleSimple((Field)(*it)->m_field, MediaTypeAlbum))
+          continue;
+        if (idSong > 0 &&
+            xsp.m_ruleCombination.IsFieldRuleSimple((Field)(*it)->m_field, MediaTypeSong))
+          continue;
+        if (idGenre > 0 && (*it)->m_field == FieldGenre)
+          continue;
+        if (idSource > 0 && (*it)->m_field == FieldSource)
+          continue;
+        // ! @TODO: albumArtistsOnly and rules?
+
+        playlist.m_ruleCombination.m_rules.push_back(*it);
+      }
+    }
+  }
+
+  // Look at rules from "filter" option
+  option = options.find("filter");
+  if (option != options.end())
+  {
+    CSmartPlaylist xspFilter;
+    if (!xspFilter.LoadFromJson(option->second.asString()))
+      return false;
+
+    // Check if the filter playlist matches the item type
+    if (xspFilter.GetType() == type)
+    {
+      for (CDatabaseQueryRules::const_iterator it = xspFilter.m_ruleCombination.m_rules.begin();
+           it != xspFilter.m_ruleCombination.m_rules.end(); ++it)
+      {
+        if ((idRole > 1 || idRole < -1) && (*it)->m_field == FieldRole)
+          continue;
+        if (idArtist > 0 &&
+            xsp.m_ruleCombination.IsFieldRuleSimple((Field)(*it)->m_field, MediaTypeArtist))
+          continue;
+        if (idAlbum > 0 &&
+            xsp.m_ruleCombination.IsFieldRuleSimple((Field)(*it)->m_field, MediaTypeAlbum))
+          continue;
+        if (idSong > 0 &&
+            xsp.m_ruleCombination.IsFieldRuleSimple((Field)(*it)->m_field, MediaTypeSong))
+          continue;
+        if (idGenre > 0 && (*it)->m_field == FieldGenre)
+          continue;
+        if (idSource > 0 && (*it)->m_field == FieldSource)
+          continue;
+        // ! @TODO: albumArtistsOnly and rules?
+
+        playlist.m_ruleCombination.m_rules.push_back(*it);
+      }
+    }
+    // remove the filter if it doesn't match the item type
+    else
+      musicUrl.RemoveOption("filter");
+  }
+
+  // Finally make filter from rules
+  if (playlist.m_ruleCombination.m_rules.size() > 0)
+  {
+    std::set<std::string> playlists;
+    std::string xspWhere;
+    xspWhere = playlist.GetWhereClause(*this, playlists);
+    filter.AppendWhere(xspWhere);
+  }
+
+  return true;
+}
+
+bool CMusicDatabase::GetFilterOld(CDbUrl& musicUrl, Filter& filter, SortDescription& sorting)
+{
+  if (!musicUrl.IsValid())
+    return false;
+
+  std::string type = musicUrl.GetType();
+  const CUrlOptions::UrlOptions& options = musicUrl.GetOptions();
+
   // Check for playlist rules first, they may contain role criteria
   bool hasRoleRules = false;
   bool hasSongAlbumArtitst = false;
@@ -11093,13 +11402,21 @@ bool CMusicDatabase::GetFilter(CDbUrl &musicUrl, Filter &filter, SortDescription
     if (!xsp.LoadFromJson(option->second.asString()))
       return false;
 
+    if (xsp.GetType() == "artists")
+    {
+      for (CDatabaseQueryRules::const_iterator it = xsp.m_ruleCombination.m_rules.begin();
+           it != xsp.m_ruleCombination.m_rules.end(); ++it)
+      {
+        if ((*it)->m_field == FieldRole || (*it)->m_field == FieldRole)
+          hasRoleRules = true;
+        else if (!xsp.m_ruleCombination.IsFieldRuleSimple((Field)(*it)->m_field, MediaTypeArtist))
+          hasSongAlbumArtitst = true;
+      }
+    }
+
     std::set<std::string> playlists;
     std::string xspWhere;
     xspWhere = xsp.GetWhereClause(*this, playlists);
-    hasRoleRules = xsp.GetType() == "artists" && xspWhere.find("song_artist.idRole = role.idRole") != xspWhere.npos;
-    hasSongAlbumArtitst =
-        xsp.GetType() == "artists" && (xspWhere.find("album_artist") != xspWhere.npos ||
-                                       xspWhere.find("song_artist") != xspWhere.npos);
 
     // check if the filter playlist matches the item type
     if (xsp.GetType() == type ||
@@ -11141,7 +11458,8 @@ bool CMusicDatabase::GetFilter(CDbUrl &musicUrl, Filter &filter, SortDescription
   }
 
   std::string strRoleSQL; //Role < 0 means all roles, otherwise filter by role
-  if(idRole > 0) strRoleSQL = PrepareSQL(" AND song_artist.idRole = %i ", idRole);
+  if (idRole > 0)
+    strRoleSQL = PrepareSQL(" AND song_artist.idRole = %i ", idRole);
 
   int idArtist = -1, idGenre = -1, idAlbum = -1, idSong = -1;
   int idDisc = -1;
@@ -11229,17 +11547,17 @@ bool CMusicDatabase::GetFilter(CDbUrl &musicUrl, Filter &filter, SortDescription
 
         For artists these rules are combined because they apply via album and song
         and so we need to ensure all criteria are met via the same album or song.
-        1) Some artists may be only album artists, so for all artists (with linked 
-           albums or songs) we need to check both album_artist and song_artist tables.
+        1) Some artists may be only album artists, so for all artists (with linked
+        albums or songs) we need to check both album_artist and song_artist tables.
         2) Role is determined from song_artist table, so even if looking for album artists
-           only we find those that also have a specific role e.g. which album artist is a
-           composer of songs in that album, from entries in the song_artist table.
+        only we find those that also have a specific role e.g. which album artist is a
+        composer of songs in that album, from entries in the song_artist table.
         a) Role < -1 is used to indicate that all roles are wanted.
         b) When not album artists only and a specific role wanted then only the song_artist
-           table is checked.
+        table is checked.
         c) When album artists only and role = 1 (an "artist") then only the album_artist
-           table is checked.      
-        */        
+        table is checked.
+        */
         std::string albumArtistSQL, songArtistSQL;
         ExistsSubQuery albumArtistSub("album_artist", "album_artist.idArtist = artistview.idArtist");
         // Prepare album artist subquery SQL
@@ -11255,7 +11573,7 @@ bool CMusicDatabase::GetFilter(CDbUrl &musicUrl, Filter &filter, SortDescription
             albumArtistSub.AppendWhere(PrepareSQL("EXISTS(SELECT 1 FROM album_source "
               "WHERE album_source.idSource = %i "
               "AND album_source.idAlbum = album_artist.idAlbum)", idSource));
-          }       
+          }
         }
         if (idRole <= 1 && idGenre > 0)
         { // Check genre of songs of album using nested subquery
@@ -11279,7 +11597,7 @@ bool CMusicDatabase::GetFilter(CDbUrl &musicUrl, Filter &filter, SortDescription
             "WHERE album_source.idSource = %i "
             "AND album_source.idAlbum = song.idAlbum))", idGenre, idSource));
         }
-        else 
+        else
         {
           if (idGenre > 0)
           {
@@ -11298,7 +11616,7 @@ bool CMusicDatabase::GetFilter(CDbUrl &musicUrl, Filter &filter, SortDescription
             songArtistSub.AppendJoin("JOIN song ON song.idSong = song_artist.idSong");
             songArtistSub.param = "song_artist.idArtist = album_artist.idArtist";
             songArtistSub.AppendWhere("song.idAlbum = album_artist.idAlbum");
-          }         
+          }
         }
 
         // Build filter clause from subqueries
@@ -11394,11 +11712,11 @@ bool CMusicDatabase::GetFilter(CDbUrl &musicUrl, Filter &filter, SortDescription
       if (idRole > 1 && albumArtistsOnly)
       {  // Album artists only with role, check AND in album_artist for same song
          // using nested subquery correlated with album_artist
-         songArtistSub.param = "song.idAlbum = album_artist.idAlbum";
-         songArtistSub.BuildSQL(songArtistSQL);
-         albumArtistSub.AppendWhere(songArtistSQL);
-         albumArtistSub.BuildSQL(albumArtistSQL);
-         filter.AppendWhere(albumArtistSQL);
+        songArtistSub.param = "song.idAlbum = album_artist.idAlbum";
+        songArtistSub.BuildSQL(songArtistSQL);
+        albumArtistSub.AppendWhere(songArtistSQL);
+        albumArtistSub.BuildSQL(albumArtistSQL);
+        filter.AppendWhere(albumArtistSQL);
       }
       else
       {
@@ -11522,9 +11840,10 @@ bool CMusicDatabase::GetFilter(CDbUrl &musicUrl, Filter &filter, SortDescription
   {
     option = options.find("singles");
     if (option != options.end())
-      filter.AppendWhere(PrepareSQL("songview.idAlbum %sIN (SELECT idAlbum FROM album WHERE strReleaseType = '%s')",
-                                    option->second.asBoolean() ? "" : "NOT ",
-                                    CAlbum::ReleaseTypeToString(CAlbum::Single).c_str()));
+      filter.AppendWhere(PrepareSQL(
+          "songview.idAlbum %sIN (SELECT idAlbum FROM album WHERE strReleaseType = '%s')",
+          option->second.asBoolean() ? "" : "NOT ",
+          CAlbum::ReleaseTypeToString(CAlbum::Single).c_str()));
 
     option = options.find("year");
     if (option != options.end())

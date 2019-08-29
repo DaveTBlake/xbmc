@@ -84,6 +84,8 @@ std::string DatabaseUtils::GetField(Field field, const MediaType &mediaType, Dat
     else if (field == FieldMusicLabel) return "albumview.strLabel";
     else if (field == FieldAlbumType) return "albumview.strType";
     else if (field == FieldCompilation) return "albumview.bCompilation";
+    else if (field == FieldSingle)
+      return "albumview.strReleaseType";
     else if (field == FieldAlbumMBId)
       return "albumview.strMusicBrainzAlbumID";
     else if (field == FieldReleaseGroupMBId)
@@ -340,7 +342,7 @@ std::string DatabaseUtils::GetNativeTable(Field field, const MediaType& mediaTyp
       field == FieldPlaycount || field == FieldStartOffset || field == FieldEndOffset ||
       field == FieldLastPlayed || field == FieldRating || field == FieldVotes ||
       field == FieldUserRating || field == FieldComment || field == FieldMoods ||
-      field == FieldGenre || field == FieldDateAdded)
+      field == FieldDateAdded)
     return "song";
   else if (field == FieldAlbumId || field == FieldAlbum || field == FieldAlbumGenre ||
            field == FieldThemes || field == FieldReview || field == FieldMusicLabel ||
@@ -348,7 +350,7 @@ std::string DatabaseUtils::GetNativeTable(Field field, const MediaType& mediaTyp
            field == FieldReleaseGroupMBId || field == FieldRating || field == FieldVotes ||
            field == FieldUserRating || field == FieldAlbumLastScrape || field == FieldAlbumYear ||
            field == FieldAlbumMoods || field == FieldAlbumStyles || field == FieldAlbumRating ||
-           field == FieldAlbumVotes || field == FieldAlbumUserRating)
+           field == FieldAlbumVotes || field == FieldAlbumUserRating || field == FieldSingle)
     return "album";
   else if (field == FieldArtistId || field == FieldArtistSort || field == FieldAlbumArtist ||
            field == FieldArtist || field == FieldArtistType || field == FieldGender ||
@@ -358,9 +360,11 @@ std::string DatabaseUtils::GetNativeTable(Field field, const MediaType& mediaTyp
            field == FieldBornFormed || field == FieldDiedDisband || field == FieldYearsActive ||
            field == FieldArtistMBId || field == FieldArtistLastScrape || field == FieldArtistMoods)
     return "artist";
+  else if (field == FieldRole || field == FieldRoleId)
+    return "Role";
   else if (field == FieldSource || field == FieldSourceId)
     return "source";
-  else if (field == FieldGenreId)
+  else if (field == FieldGenre || field == FieldGenreId)
     return "genre";
   else if (field == FieldPath)
     return "path";

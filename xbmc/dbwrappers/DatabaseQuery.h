@@ -44,15 +44,18 @@ public:
                          OPERATOR_END
                        };
 
-  enum FIELD_TYPE { TEXT_FIELD = 0,
-                    REAL_FIELD,
-                    NUMERIC_FIELD,
-                    DATE_FIELD,
-                    PLAYLIST_FIELD,
-                    SECONDS_FIELD,
-                    BOOLEAN_FIELD,
-                    TEXTIN_FIELD
-                  };
+  enum FIELD_TYPE
+  {
+    TEXT_FIELD = 0,
+    REAL_FIELD,
+    NUMERIC_FIELD,
+    DATE_FIELD,
+    PLAYLIST_FIELD,
+    SECONDS_FIELD,
+    BOOLEAN_FIELD,
+    TEXTIN_FIELD,
+    INTEGER_FIELD
+  };
 
   virtual bool Load(const TiXmlNode *node, const std::string &encoding = "UTF-8");
   virtual bool Load(const CVariant &obj);
@@ -135,6 +138,7 @@ public:
 protected:
   friend class CGUIDialogSmartPlaylistEditor;
   friend class CGUIDialogMediaFilter;
+  friend class CMusicDatabase;
 
   Combination m_type = CombinationAnd;
   CDatabaseQueryRuleCombinations m_combinations;

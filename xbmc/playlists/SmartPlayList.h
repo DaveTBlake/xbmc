@@ -90,7 +90,8 @@ public:
                                   bool& bAlbumArtists,
                                   bool& bSongArtists,
                                   bool& bJoinRole,
-                                  bool& bRoleRules) const;
+                                  bool& bRoleRules,
+                                  int& iRoleRuleCount) const;
   static bool IsFieldRuleSimple(Field field, const MediaType& mediaType);
   static bool IsFieldNative(Field field, const MediaType& mediaType, const std::string& strTable);
   std::string CombineClause(const std::string& originial, const std::string& clause) const;
@@ -146,6 +147,10 @@ public:
   void SetGroupMixed(bool mixed) { m_groupMixed = mixed; }
   bool IsGroupMixed() const { return m_groupMixed; }
 
+  void AddRule(Field field,
+               CDatabaseQueryRule::SEARCH_OPERATOR ruleOperator,
+               const std::string& parameter = "");
+
   /*! \brief get the where clause for a playlist
    We handle playlists inside playlists separately in order to ensure we don't introduce infinite loops
    by playlist A including playlist B which also (perhaps via other playlists) then includes playlistA.
@@ -173,6 +178,7 @@ public:
 private:
   friend class CGUIDialogSmartPlaylistEditor;
   friend class CGUIDialogMediaFilter;
+  friend class CMusicDatabase;
 
   const TiXmlNode* readName(const TiXmlNode *root);
   const TiXmlNode* readNameFromPath(const CURL &url);
