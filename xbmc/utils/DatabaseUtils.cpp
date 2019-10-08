@@ -447,8 +447,12 @@ bool DatabaseUtils::GetDatabaseResults(const MediaType &mediaType, const FieldLi
 
 std::string DatabaseUtils::BuildLimitClause(int end, int start /* = 0 */)
 {
+  return " LIMIT " + BuildLimitClauseOnly(end, start);
+}
+
+std::string DatabaseUtils::BuildLimitClauseOnly(int end, int start)
+{
   std::ostringstream sql;
-  sql << " LIMIT ";
   if (start > 0)
   {
     if (end > 0)

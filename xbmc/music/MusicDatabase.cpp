@@ -4591,6 +4591,7 @@ bool CMusicDatabase::GetAlbumsByWhere(const std::string &baseDir, const Filter &
   return false;
 }
 
+
 bool CMusicDatabase::GetSongsFullByWhere(const std::string &baseDir, const Filter &filter, CFileItemList &items, const SortDescription &sortDescription /* = SortDescription() */, bool artistData /* = false*/)
 {
   if (m_pDB == nullptr || m_pDS == nullptr)
@@ -4622,17 +4623,25 @@ bool CMusicDatabase::GetSongsFullByWhere(const std::string &baseDir, const Filte
     // Count number of songs that satisfy selection criteria
     total = (int)strtol(GetSingleValue("SELECT COUNT(1) FROM songview " + strSQLExtra, m_pDS).c_str(), NULL, 10);
 
-    // Apply any limiting directly in SQL if there is either no special sorting or random sort
-    // When limited, random sort is also applied in SQL
-    bool limitedInSQL = extFilter.limit.empty() &&
-      (sortDescription.sortBy == SortByNone || sortDescription.sortBy == SortByRandom) &&
-      (sortDescription.limitStart > 0 || sortDescription.limitEnd > 0);
+    // Apply any limiting directly in SQL and so sort as well
+    bool limitedInSQL =
+        extFilter.limit.empty() && (sortDescription.limitStart > 0 || sortDescription.limitEnd > 0);
     if (limitedInSQL)
     {
-      if (sortDescription.sortBy == SortByRandom)
-        strSQLExtra += PrepareSQL(" ORDER BY RANDOM()");
-      strSQLExtra += DatabaseUtils::BuildLimitClause(sortDescription.limitEnd, sortDescription.limitStart);
+      extFilter.limit = DatabaseUtils::BuildLimitClauseOnly(sortDescription.limitEnd, sortDescription.limitStart);
+      // Set Orderby and add any extra fields needed for sort e.g. "artistname" scalar query
+      // Order applied to Songview without joins so field names unique and don't need table/view prefix
+      GetOrderFilter(MediaTypeSong, sortDescription, extFilter);
     }
+    else if (artistData)
+    {
+      extFilter.AppendOrder("songartistview.idSong");
+      extFilter.AppendOrder("songartistview.idRole");
+      extFilter.AppendOrder("songartistview.iOrder");
+    }
+    strSQLExtra.clear();
+    BuildSQL(strSQLExtra, extFilter, strSQLExtra);
+
 
     std::string strSQL;
     if (artistData)
@@ -4640,14 +4649,19 @@ bool CMusicDatabase::GetSongsFullByWhere(const std::string &baseDir, const Filte
       // All songs now have at least one artist so inner join sufficient
       // Need guaranteed ordering for dataset processing to extract songs
       if (limitedInSQL)
-        //Apply where clause, limits and random order to songview, then join as multiple records in result set per song
+      {
+        //Apply where clause, limits and order to songview, then join as multiple records in result set per song
+        std::string strSVFields = "songview.*";
+        if (!extFilter.fields.empty() && extFilter.fields.compare("*") != 0)
+          strSVFields = "songview.*, " + extFilter.fields;
         strSQL = "SELECT sv.*, songartistview.* "
-          "FROM (SELECT songview.* FROM songview " + strSQLExtra + ") AS sv "
-          "JOIN songartistview ON songartistview.idsong = sv.idsong ";
+          "FROM (SELECT " + strSVFields + " FROM songview " + strSQLExtra + ") AS sv "
+          "JOIN songartistview ON songartistview.idSong = sv.idSong "
+          "ORDER BY songartistview.idSong, songartistview.idRole, songartistview.iOrder";
+      }
       else
         strSQL = "SELECT songview.*, songartistview.* "
-          "FROM songview JOIN songartistview ON songartistview.idsong = songview.idsong " + strSQLExtra;
-      strSQL += " ORDER BY songartistview.idsong, songartistview.idRole, songartistview.iOrder";
+          "FROM songview JOIN songartistview ON songartistview.idSong = songview.idSong " + strSQLExtra;
     }
     else
       strSQL = "SELECT songview.* FROM songview " + strSQLExtra;
@@ -4669,11 +4683,11 @@ bool CMusicDatabase::GetSongsFullByWhere(const std::string &baseDir, const Filte
 
     DatabaseResults results;
     results.reserve(iRowsFound);
-    // Avoid sorting with limits when have join with songartistview
-    // Limit when SortByNone already applied in SQL,
-    // apply sort later to fileitems list rather than dataset
+    // Avoid sorting when populating results when a) have join with songartistview
+    // or b) have limits so already sorted in SQL
+    // Apply sort later to fileitems list rather than dataset
     sorting = sortDescription;
-    if (artistData && sortDescription.sortBy != SortByNone)
+    if (artistData || limitedInSQL)
       sorting.sortBy = SortByNone;
     if (!SortUtils::SortFromDataset(sorting, MediaTypeSong, m_pDS, results))
       return false;
@@ -4735,7 +4749,7 @@ bool CMusicDatabase::GetSongsFullByWhere(const std::string &baseDir, const Filte
 
     // Finally do any sorting in items list we have not been able to do before in SQL or dataset,
     // that is when have join with songartistview and sorting other than random with limit
-    if (artistData && sortDescription.sortBy != SortByNone && !(limitedInSQL && sortDescription.sortBy == SortByRandom))
+    if (artistData && !limitedInSQL)
       items.Sort(sortDescription);
 
     CLog::Log(LOGDEBUG, "%s(%s) - took %d ms", __FUNCTION__, filter.where.c_str(), XbmcThreads::SystemClockMillis() - time);
@@ -10809,6 +10823,145 @@ std::vector<std::string> CMusicDatabase::GetAvailableArtTypesForItem(int mediaId
     }
   }
   return result;
+}
+
+typedef struct FieldTranslator {
+  const char *tableField;
+  const char *viewField;
+} FieldTranslator;
+
+static FieldTranslator s_songTranslator[] = {
+  {"song.idSong", "songview.idSong"},
+  {"song.strArtistDisp", "strArtists" },
+  {"song.strArtistSort", "strArtistSort" },
+  {"song.strGenres", "strGenres" },
+  {"song.iYear", "iYear"},
+  {"song.rating"},
+  {"song.userrating"},
+  {"song.votes"},
+  {"song.idAlbum", "idAlbum"},
+  {"strPath", "path.strPath"},
+  {"album.bCompilation", "bCompilation" },
+  {"album.strArtistDisp", "strAlbumArtists"},
+  {"album.strArtistSort", "strAlbumArtistSort" },
+  {"album.strReleaseType", "strAlbumReleaseType" },
+  {"song.mood", "mood" },
+  {"song.dateAdded", "dateAdded"}
+};
+
+const std::map<SortBy, std::string> SongviewSortFieldsMap = {
+    {SortByLabel, "iTrack/strTitle"},
+    {SortByTrackNumber, "iTrack"},
+    {SortByTitle, "strTitle"},
+    {SortByAlbum, "strAlbum/songview.strArtists/iTrack"},
+    {SortByArtist, "songview.strArtists/strAlbum/iTrack"},
+    {SortByArtistThenYear, "songview.strArtists/iYear/strAlbum/iTrack"},
+    {SortByYear, "iYear/strAlbum/iTrack/strTitle"},
+    {SortByGenre, "songview.strGenres/strTitle/songview.strArtists"},
+    {SortByDateAdded, "dateAdded"},
+    {SortByLastPlayed, "lastPlayed/iTrack/strTitle"},
+    {SortByPlaycount, "iTimesPlayed/iTrack/strTitle"},
+    {SortByRating, "fRating/iTrack/strTitle"},
+    {SortByVotes, "iVotes/iTrack/strTitle"},
+    {SortByUserRating, "userrating/iTrack/strTitle"},
+    {SortByFile, "strPath/strFilename"},
+    {SortByTime, "iDuration"}
+};
+
+const std::map<SortBy, std::string> AlbumviewSortFieldsMap = {
+    {SortByAlbum, "strAlbum/strArtists"},
+    {SortByLabel, "strAlbum/strArtists"},
+    {SortByTitle, "strAlbum/strArtists"},
+    {SortByAlbumType, "strType/strAlbum/strArtists"},
+    {SortByArtist, "strArtists/strAlbum"},
+    {SortByArtistThenYear, "strArtists/iYear/strAlbum"},
+    {SortByYear, "iYear/strAlbum"},
+    {SortByGenre, "strGenres/strAlbum/strArtists"},
+    {SortByDateAdded, "dateAdded"},
+    {SortByPlaycount, "iTimesPlayed/strAlbum/strArtists"},
+    {SortByLastPlayed, "lastPlayed/strAlbum/strArtists"},
+    {SortByRating, "fRating/strAlbum/strArtists"},
+    {SortByVotes, "iVotes/strAlbum/strArtists"},
+    {SortByUserRating, "iUserrating/strAlbum/strArtists"}
+};
+
+const std::map<SortBy, std::string> ArtistviewSortFieldsMap = {
+  { SortByLabel, "strArtist" },
+  { SortByTitle, "strArtist" },
+  { SortByArtist, "strArtist" },
+  { SortByGenre, "strGenres/strArtist" },
+  { SortByDateAdded, "dateAdded" },
+};
+
+
+void CMusicDatabase::GetOrderFilter(const std::string& type, const SortDescription& sorting, Filter& filter)
+{
+  // Populate filter with ORDER BY clause and any extra scalar query fields needed for sort
+  std::vector<std::string> orderfields;
+  std::string DESC;
+
+  if (sorting.sortOrder == SortOrderDescending)
+    DESC = " DESC";
+
+  if (sorting.sortBy == SortByRandom)
+    orderfields.emplace_back(PrepareSQL("RANDOM()")); //Adjusts styntax for MySQL
+  else
+  {
+    if (type == MediaTypeSong)
+    {
+      auto it = SongviewSortFieldsMap.find(sorting.sortBy);
+      if (it != SongviewSortFieldsMap.end())
+        orderfields = StringUtils::Split(it->second, "/");
+      // Add sort by id to define order when other fields same
+      orderfields.emplace_back("idSong");
+    }
+    else if (type == MediaTypeAlbum)
+    {
+      auto it = AlbumviewSortFieldsMap.find(sorting.sortBy);
+      if (it != AlbumviewSortFieldsMap.end())
+        orderfields = StringUtils::Split(it->second, "/");
+      // Add sort by id to define order when other fields same
+      orderfields.emplace_back("idAlbum");
+    }
+    else if (type == MediaTypeArtist)
+    {
+      auto it = ArtistviewSortFieldsMap.find(sorting.sortBy);
+      if (it != ArtistviewSortFieldsMap.end())
+        orderfields = StringUtils::Split(it->second, "/");
+      // Add sort by id to define order when other fields same
+      orderfields.emplace_back("idArtist");
+    }
+  }
+
+  // Convert field names into order by statement elements
+  for (auto& name : orderfields)
+  {
+    //Add field for adjusted name sorting using sort name and ignoring articles
+    if (StringUtils::EndsWith(name, "strArtists") || StringUtils::EndsWith(name, "strArtist"))
+    {
+      std::string artistsortSQL;
+      if (StringUtils::EndsWith(name, "strArtists"))
+        artistsortSQL = SortnameBuildSQL("artistsortname", sorting.sortAttributes, "strArtists",
+                                         "strArtistSort");
+      else
+        artistsortSQL = SortnameBuildSQL("artistsortname", sorting.sortAttributes, "strArtist", 
+                                         "strSortName");
+      if (!artistsortSQL.empty())
+      {
+        name = "artistsortname";
+        filter.AppendField(artistsortSQL); // Add artistsortname as scalar query field
+      }
+      // Natural number case insensitve sort
+      filter.AppendOrder(AlphanumericSortSQL(name, sorting.sortOrder));
+    }
+    else if (StringUtils::EndsWith(name, "strTitle") || 
+             StringUtils::EndsWith(name, "strAlbum") ||
+             StringUtils::EndsWith(name, "strGenres"))
+      // Natural number case insensitve sort
+      filter.AppendOrder(AlphanumericSortSQL(name, sorting.sortOrder));
+    else
+      filter.AppendOrder(name + DESC);
+  }
 }
 
 bool CMusicDatabase::GetFilter(CDbUrl &musicUrl, Filter &filter, SortDescription &sorting)
