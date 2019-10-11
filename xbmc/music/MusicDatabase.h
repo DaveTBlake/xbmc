@@ -450,6 +450,7 @@ public:
   bool GetArtistsByWhere(const std::string& strBaseDir, const Filter &filter, CFileItemList& items, const SortDescription &sortDescription = SortDescription(), bool countOnly = false);
   int GetSongsCount(const Filter &filter = Filter());
   bool GetFilter(CDbUrl &musicUrl, Filter &filter, SortDescription &sorting) override;
+  std::string GetSortOrder(const MediaType& mediaType, SortBy sortMethod);
   void GetOrderFilter(const std::string& type, const SortDescription& sorting, Filter& filter);
 
   /////////////////////////////////////////////////

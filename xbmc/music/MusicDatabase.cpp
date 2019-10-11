@@ -10849,50 +10849,89 @@ static FieldTranslator s_songTranslator[] = {
   {"song.dateAdded", "dateAdded"}
 };
 
-const std::map<SortBy, std::string> SongviewSortFieldsMap = {
-    {SortByLabel, "iTrack/strTitle"},
-    {SortByTrackNumber, "iTrack"},
-    {SortByTitle, "strTitle"},
-    {SortByAlbum, "strAlbum/songview.strArtists/iTrack"},
-    {SortByArtist, "songview.strArtists/strAlbum/iTrack"},
-    {SortByArtistThenYear, "songview.strArtists/iYear/strAlbum/iTrack"},
-    {SortByYear, "iYear/strAlbum/iTrack/strTitle"},
-    {SortByGenre, "songview.strGenres/strTitle/songview.strArtists"},
-    {SortByDateAdded, "dateAdded"},
-    {SortByLastPlayed, "lastPlayed/iTrack/strTitle"},
-    {SortByPlaycount, "iTimesPlayed/iTrack/strTitle"},
-    {SortByRating, "fRating/iTrack/strTitle"},
-    {SortByVotes, "iVotes/iTrack/strTitle"},
-    {SortByUserRating, "userrating/iTrack/strTitle"},
-    {SortByFile, "strPath/strFilename"},
-    {SortByTime, "iDuration"}
-};
+std::string CMusicDatabase::GetSortOrder(const MediaType& mediaType, SortBy sortMethod)
+{
+  if (sortMethod == SortByNone || mediaType == MediaTypeNone)
+    return std::string();
 
-const std::map<SortBy, std::string> AlbumviewSortFieldsMap = {
-    {SortByAlbum, "strAlbum/strArtists"},
-    {SortByLabel, "strAlbum/strArtists"},
-    {SortByTitle, "strAlbum/strArtists"},
-    {SortByAlbumType, "strType/strAlbum/strArtists"},
-    {SortByArtist, "strArtists/strAlbum"},
-    {SortByArtistThenYear, "strArtists/iYear/strAlbum"},
-    {SortByYear, "iYear/strAlbum"},
-    {SortByGenre, "strGenres/strAlbum/strArtists"},
-    {SortByDateAdded, "dateAdded"},
-    {SortByPlaycount, "iTimesPlayed/strAlbum/strArtists"},
-    {SortByLastPlayed, "lastPlayed/strAlbum/strArtists"},
-    {SortByRating, "fRating/strAlbum/strArtists"},
-    {SortByVotes, "iVotes/strAlbum/strArtists"},
-    {SortByUserRating, "iUserrating/strAlbum/strArtists"}
-};
+  if (mediaType == MediaTypeAlbum)
+  {
+    if (sortMethod == SortByAlbum)
+      return "strAlbum/strArtists";
+    else if (sortMethod == SortByLabel)
+      return "strAlbum/strArtists";
+    else if (sortMethod == SortByTitle)
+      return "strAlbum/strArtists";
+    else if (sortMethod == SortByAlbumType)
+      return "strType/strAlbum/strArtists";
+    else if (sortMethod == SortByArtist)
+      return "strArtists/strAlbum";
+    else if (sortMethod == SortByArtistThenYear)
+      return "strArtists/iYear/strAlbum";
+    else if (sortMethod == SortByYear)
+      return "iYear/strAlbum";
+    else if (sortMethod == SortByGenre)
+      return "strGenres/strAlbum/strArtists";
+    else if (sortMethod == SortByDateAdded)
+      return "dateAdded";
+    else if (sortMethod == SortByPlaycount)
+      return "iTimesPlayed/strAlbum/strArtists";
+    else if (sortMethod == SortByLastPlayed)
+      return "lastPlayed/strAlbum/strArtists";
+    else if (sortMethod == SortByRating)
+      return "fRating/strAlbum/strArtists";
+    else if (sortMethod == SortByVotes)
+      return "iVotes/strAlbum/strArtists";
+    else if (sortMethod == SortByUserRating)
+      return "iUserrating/strAlbum/strArtists";
+  }
+  else if (mediaType == MediaTypeSong)
+  {
+    if (sortMethod == SortByLabel)
+      return "iTrack/strTitle";
+    else if (sortMethod == SortByTrackNumber)
+      return "iTrack";
+    else if (sortMethod == SortByTitle)
+      return "strTitle";
+    else if (sortMethod == SortByAlbum)
+      return "strAlbum/strArtists/iTrack";
+    else if (sortMethod == SortByArtist)
+      return "strArtists/strAlbum/iTrack";
+    else if (sortMethod == SortByArtistThenYear)
+      return "strArtists/iYear/strAlbum/iTrack";
+    else if (sortMethod == SortByYear)
+      return "iYear/strAlbum/iTrack/strTitle";
+    else if (sortMethod == SortByGenre)
+      return "strGenres/strTitle/strArtists";
+    else if (sortMethod == SortByDateAdded)
+      return "dateAdded";
+    else if (sortMethod == SortByLastPlayed)
+      return "lastPlayed/iTrack/strTitle";
+    else if (sortMethod == SortByPlaycount)
+      return "iTimesPlayed/iTrack/strTitle";
+    else if (sortMethod == SortByRating)
+      return "fRating/iTrack/strTitle";
+    else if (sortMethod == SortByVotes)
+      return "iVotes/iTrack/strTitle";
+    else if (sortMethod == SortByUserRating)
+      return "userrating/iTrack/strTitle";
+    else if (sortMethod == SortByFile)
+      return "strPath/strFilename";
+    else if (sortMethod == SortByTime)
+      return "iDuration";
+  }
+  else if (mediaType == MediaTypeArtist)
+  {
+    if (sortMethod == SortByLabel || sortMethod == SortByTitle || sortMethod == SortByArtist)
+      return "strArtist";
+    else if (sortMethod == SortByGenre)
+      return "strGenres/strArtist";
+    else if (sortMethod == SortByDateAdded)
+      return "dateAdded";
+  }
 
-const std::map<SortBy, std::string> ArtistviewSortFieldsMap = {
-  { SortByLabel, "strArtist" },
-  { SortByTitle, "strArtist" },
-  { SortByArtist, "strArtist" },
-  { SortByGenre, "strGenres/strArtist" },
-  { SortByDateAdded, "dateAdded" },
-};
-
+  return std::string();
+}
 
 void CMusicDatabase::GetOrderFilter(const std::string& type, const SortDescription& sorting, Filter& filter)
 {
@@ -10907,30 +10946,16 @@ void CMusicDatabase::GetOrderFilter(const std::string& type, const SortDescripti
     orderfields.emplace_back(PrepareSQL("RANDOM()")); //Adjusts styntax for MySQL
   else
   {
+    std::string strOrder;
+    strOrder = GetSortOrder(type, sorting.sortBy);
+    orderfields = StringUtils::Split(strOrder, "/");
+    // Add sort by id to define order when other fields same
     if (type == MediaTypeSong)
-    {
-      auto it = SongviewSortFieldsMap.find(sorting.sortBy);
-      if (it != SongviewSortFieldsMap.end())
-        orderfields = StringUtils::Split(it->second, "/");
-      // Add sort by id to define order when other fields same
       orderfields.emplace_back("idSong");
-    }
     else if (type == MediaTypeAlbum)
-    {
-      auto it = AlbumviewSortFieldsMap.find(sorting.sortBy);
-      if (it != AlbumviewSortFieldsMap.end())
-        orderfields = StringUtils::Split(it->second, "/");
-      // Add sort by id to define order when other fields same
       orderfields.emplace_back("idAlbum");
-    }
     else if (type == MediaTypeArtist)
-    {
-      auto it = ArtistviewSortFieldsMap.find(sorting.sortBy);
-      if (it != ArtistviewSortFieldsMap.end())
-        orderfields = StringUtils::Split(it->second, "/");
-      // Add sort by id to define order when other fields same
       orderfields.emplace_back("idArtist");
-    }
   }
 
   // Convert field names into order by statement elements
