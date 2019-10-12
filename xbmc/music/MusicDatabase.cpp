@@ -10849,90 +10849,6 @@ static FieldTranslator s_songTranslator[] = {
   {"song.dateAdded", "dateAdded"}
 };
 
-std::string CMusicDatabase::GetSortOrder(const MediaType& mediaType, SortBy sortMethod)
-{
-  if (sortMethod == SortByNone || mediaType == MediaTypeNone)
-    return std::string();
-
-  if (mediaType == MediaTypeAlbum)
-  {
-    if (sortMethod == SortByAlbum)
-      return "strAlbum/strArtists";
-    else if (sortMethod == SortByLabel)
-      return "strAlbum/strArtists";
-    else if (sortMethod == SortByTitle)
-      return "strAlbum/strArtists";
-    else if (sortMethod == SortByAlbumType)
-      return "strType/strAlbum/strArtists";
-    else if (sortMethod == SortByArtist)
-      return "strArtists/strAlbum";
-    else if (sortMethod == SortByArtistThenYear)
-      return "strArtists/iYear/strAlbum";
-    else if (sortMethod == SortByYear)
-      return "iYear/strAlbum";
-    else if (sortMethod == SortByGenre)
-      return "strGenres/strAlbum/strArtists";
-    else if (sortMethod == SortByDateAdded)
-      return "dateAdded";
-    else if (sortMethod == SortByPlaycount)
-      return "iTimesPlayed/strAlbum/strArtists";
-    else if (sortMethod == SortByLastPlayed)
-      return "lastPlayed/strAlbum/strArtists";
-    else if (sortMethod == SortByRating)
-      return "fRating/strAlbum/strArtists";
-    else if (sortMethod == SortByVotes)
-      return "iVotes/strAlbum/strArtists";
-    else if (sortMethod == SortByUserRating)
-      return "iUserrating/strAlbum/strArtists";
-  }
-  else if (mediaType == MediaTypeSong)
-  {
-    if (sortMethod == SortByLabel)
-      return "iTrack/strTitle";
-    else if (sortMethod == SortByTrackNumber)
-      return "iTrack";
-    else if (sortMethod == SortByTitle)
-      return "strTitle";
-    else if (sortMethod == SortByAlbum)
-      return "strAlbum/strArtists/iTrack";
-    else if (sortMethod == SortByArtist)
-      return "strArtists/strAlbum/iTrack";
-    else if (sortMethod == SortByArtistThenYear)
-      return "strArtists/iYear/strAlbum/iTrack";
-    else if (sortMethod == SortByYear)
-      return "iYear/strAlbum/iTrack/strTitle";
-    else if (sortMethod == SortByGenre)
-      return "strGenres/strTitle/strArtists";
-    else if (sortMethod == SortByDateAdded)
-      return "dateAdded";
-    else if (sortMethod == SortByLastPlayed)
-      return "lastPlayed/iTrack/strTitle";
-    else if (sortMethod == SortByPlaycount)
-      return "iTimesPlayed/iTrack/strTitle";
-    else if (sortMethod == SortByRating)
-      return "fRating/iTrack/strTitle";
-    else if (sortMethod == SortByVotes)
-      return "iVotes/iTrack/strTitle";
-    else if (sortMethod == SortByUserRating)
-      return "userrating/iTrack/strTitle";
-    else if (sortMethod == SortByFile)
-      return "strPath/strFilename";
-    else if (sortMethod == SortByTime)
-      return "iDuration";
-  }
-  else if (mediaType == MediaTypeArtist)
-  {
-    if (sortMethod == SortByLabel || sortMethod == SortByTitle || sortMethod == SortByArtist)
-      return "strArtist";
-    else if (sortMethod == SortByGenre)
-      return "strGenres/strArtist";
-    else if (sortMethod == SortByDateAdded)
-      return "dateAdded";
-  }
-
-  return std::string();
-}
-
 void CMusicDatabase::GetOrderFilter(const std::string& type, const SortDescription& sorting, Filter& filter)
 {
   // Populate filter with ORDER BY clause and any extra scalar query fields needed for sort
@@ -10946,9 +10862,15 @@ void CMusicDatabase::GetOrderFilter(const std::string& type, const SortDescripti
     orderfields.emplace_back(PrepareSQL("RANDOM()")); //Adjusts styntax for MySQL
   else
   {
-    std::string strOrder;
-    strOrder = GetSortOrder(type, sorting.sortBy);
-    orderfields = StringUtils::Split(strOrder, "/");
+    FieldList fields;
+    SortUtils::GetFieldsForSQLSort(type, sorting.sortBy, fields);
+    for (const auto& it : fields)
+    {
+      std::string strField = DatabaseUtils::GetField(it, type, DatabaseQueryPartSelect);
+      if (!strField.empty())
+        orderfields.emplace_back(strField);
+    }
+
     // Add sort by id to define order when other fields same
     if (type == MediaTypeSong)
       orderfields.emplace_back("idSong");
