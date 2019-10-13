@@ -4630,7 +4630,6 @@ bool CMusicDatabase::GetSongsFullByWhere(const std::string &baseDir, const Filte
     {
       extFilter.limit = DatabaseUtils::BuildLimitClauseOnly(sortDescription.limitEnd, sortDescription.limitStart);
       // Set Orderby and add any extra fields needed for sort e.g. "artistname" scalar query
-      // Order applied to Songview without joins so field names unique and don't need table/view prefix
       GetOrderFilter(MediaTypeSong, sortDescription, extFilter);
     }
     else if (artistData)
@@ -6178,118 +6177,23 @@ bool CMusicDatabase::GetSongsByWhereJSON(const std::set<std::string>& fields, co
       extFilter.AppendJoin("JOIN path ON path.idPath = song.idPath");
     }
 
-    //! @todo: use SortAttributeUseArtistSortName and remove articles
-    std::vector<std::string> orderfields;
-    std::string DESC;
-    if (sortDescription.sortOrder == SortOrderDescending)
-      DESC = " DESC";
-    if (sortDescription.sortBy == SortByRandom)
-      orderfields.emplace_back(PrepareSQL("RANDOM()")); //Adjust styntax
-    else if (sortDescription.sortBy == SortByLabel)
-    {
-      orderfields.emplace_back("song.iTrack");
-      orderfields.emplace_back("strTitle");
-    }
-    else if (sortDescription.sortBy == SortByTrackNumber)
-      orderfields.emplace_back("song.iTrack");
-    else if (sortDescription.sortBy == SortByTitle)
-      orderfields.emplace_back("strTitle");
-    else if (sortDescription.sortBy == SortByAlbum)
-    {
-      orderfields.emplace_back("strAlbum");
-      orderfields.emplace_back("song.strArtistDisp");
-      orderfields.emplace_back("song.iTrack");
-    }    
-    else if (sortDescription.sortBy == SortByArtist)
-    {
-      orderfields.emplace_back("song.strArtistDisp");
-      orderfields.emplace_back("strAlbum");
-      orderfields.emplace_back("song.iTrack");
-    }
-    else if (sortDescription.sortBy == SortByArtistThenYear)
-    {
-      orderfields.emplace_back("song.strArtistDisp");
-      orderfields.emplace_back("iYear");
-      orderfields.emplace_back("strAlbum");
-      orderfields.emplace_back("song.iTrack");
-    }
-    else if (sortDescription.sortBy == SortByYear)
-    {
-      orderfields.emplace_back("song.iYear");
-      orderfields.emplace_back("strAlbum");
-      orderfields.emplace_back("song.iTrack");
-      orderfields.emplace_back("strTitle");
-    }
-    else if (sortDescription.sortBy == SortByGenre)
-    {
-      orderfields.emplace_back("song.strGenres");
-      orderfields.emplace_back("strTitle");
-      orderfields.emplace_back("song.strArtistDisp");
-    }
-    else if (sortDescription.sortBy == SortByDateAdded)
-      orderfields.emplace_back("dateAdded");
-    else if (sortDescription.sortBy == SortByPlaycount)
-    {
-      orderfields.emplace_back("iTimesPlayed");
-      orderfields.emplace_back("song.iTrack");
-      orderfields.emplace_back("strTitle");
-    }
-    else if (sortDescription.sortBy == SortByLastPlayed)
-    {
-      orderfields.emplace_back("lastPlayed");
-      orderfields.emplace_back("song.iTrack");
-      orderfields.emplace_back("strTitle");
-    }
-    else if (sortDescription.sortBy == SortByRating)
-    {
-      orderfields.emplace_back("fRating");
-      orderfields.emplace_back("song.iTrack");
-      orderfields.emplace_back("strTitle");
-    }
-    else if (sortDescription.sortBy == SortByVotes)
-    {
-      orderfields.emplace_back("iVotes");
-      orderfields.emplace_back("song.iTrack");
-      orderfields.emplace_back("strTitle");
-    }
-    else if (sortDescription.sortBy == SortByUserRating)
-    {
-      orderfields.emplace_back("userrating");
-      orderfields.emplace_back("song.iTrack");
-      orderfields.emplace_back("strTitle");
-    }
-    else if (sortDescription.sortBy == SortByFile)
-      orderfields.emplace_back("strPathFile");
-    else if (sortDescription.sortBy == SortByTime)
-      orderfields.emplace_back("iDuration");
+    GetOrderFilter(MediaTypeSong, sortDescription, extFilter);
+    // Replace songview field names in order by with song, album path table field names
+    // Field names in album same as song - idAlbum, strArtistDisp, strArtistSort, strGenres, iYear, bCompilation
+    StringUtils::Replace(extFilter.order, "songview.strPath", "strPath");
+    StringUtils::Replace(extFilter.order, "songview.strAlbum", "strAlbum");
+    StringUtils::Replace(extFilter.order, "songview.bCompilation", "album.bCompilation");
+    StringUtils::Replace(extFilter.order, "songview.strArtists", "song.strArtistDisp");
+    StringUtils::Replace(extFilter.order, "songview.strAlbumArtists", "album.strArtistDisp");
+    StringUtils::Replace(extFilter.order, "songview.strAlbumArtistSort", "album.strArtistSort");
+    StringUtils::Replace(extFilter.order, "songview.strAlbumReleaseType", "strReleaseType");
+    StringUtils::Replace(extFilter.order, "songview", "song");
 
-    // Always sort by id to define order when other fields same
-    if (sortDescription.sortBy != SortByRandom)      
-      orderfields.emplace_back("song.idSong");
-
-    // Fill inline view filter order fields, and build sort scalar subquery SQL
-    std::string artistsortSQL;
-    for (auto& name : orderfields)
-    {
-      //Add field for adjusted name sorting using sort name and ignoring articles
-      if (name.compare("song.strArtistDisp") == 0)
-      {
-        artistsortSQL = SortnameBuildSQL("artistsortname", sortDescription.sortAttributes, 
-          "song.strArtistDisp", "song.strArtistSort");
-        if (!artistsortSQL.empty())
-          name = "artistsortname";
-        // Natural number case insensitve sort
-        extFilter.AppendOrder(AlphanumericSortSQL(name, sortDescription.sortOrder));
-      }
-      else if (name.compare("strTitle") == 0  || 
-               name.compare("strAlbum") == 0 || 
-               name.compare("song.strGenres") == 0)
-        // Natural number case insensitve sort
-        extFilter.AppendOrder(AlphanumericSortSQL(name, sortDescription.sortOrder));
-      else
-
-      extFilter.AppendOrder(name + DESC);
-    }
+    // Grab and adjust artist sort field that may have been added to filter
+    // This needs to be added in the expected position in the vector
+    std::string artistsortSQL = extFilter.fields;
+    extFilter.fields.clear();
+    StringUtils::Replace(artistsortSQL, "songview.strArtists", "song.strArtistDisp");
 
     std::string strSQL;
 
@@ -6323,7 +6227,7 @@ bool CMusicDatabase::GetSongsByWhereJSON(const std::set<std::string>& fields, co
       bool foundOrderby(false);
       bool foundJSON = fields.find(JSONtoDBSong[i].fieldJSON) != fields.end();
       if (!foundJSON)
-        foundOrderby = std::find(orderfields.begin(), orderfields.end(), JSONtoDBSong[i].fieldDB) != orderfields.end();
+        foundOrderby = extFilter.order.find(JSONtoDBSong[i].fieldDB) != std::string::npos;
       if (foundOrderby || foundJSON)
       {
         if (JSONtoDBSong[i].bSimple)
@@ -10825,30 +10729,6 @@ std::vector<std::string> CMusicDatabase::GetAvailableArtTypesForItem(int mediaId
   return result;
 }
 
-typedef struct FieldTranslator {
-  const char *tableField;
-  const char *viewField;
-} FieldTranslator;
-
-static FieldTranslator s_songTranslator[] = {
-  {"song.idSong", "songview.idSong"},
-  {"song.strArtistDisp", "strArtists" },
-  {"song.strArtistSort", "strArtistSort" },
-  {"song.strGenres", "strGenres" },
-  {"song.iYear", "iYear"},
-  {"song.rating"},
-  {"song.userrating"},
-  {"song.votes"},
-  {"song.idAlbum", "idAlbum"},
-  {"strPath", "path.strPath"},
-  {"album.bCompilation", "bCompilation" },
-  {"album.strArtistDisp", "strAlbumArtists"},
-  {"album.strArtistSort", "strAlbumArtistSort" },
-  {"album.strReleaseType", "strAlbumReleaseType" },
-  {"song.mood", "mood" },
-  {"song.dateAdded", "dateAdded"}
-};
-
 void CMusicDatabase::GetOrderFilter(const std::string& type, const SortDescription& sorting, Filter& filter)
 {
   // Populate filter with ORDER BY clause and any extra scalar query fields needed for sort
@@ -10870,14 +10750,6 @@ void CMusicDatabase::GetOrderFilter(const std::string& type, const SortDescripti
       if (!strField.empty())
         orderfields.emplace_back(strField);
     }
-
-    // Add sort by id to define order when other fields same
-    if (type == MediaTypeSong)
-      orderfields.emplace_back("idSong");
-    else if (type == MediaTypeAlbum)
-      orderfields.emplace_back("idAlbum");
-    else if (type == MediaTypeArtist)
-      orderfields.emplace_back("idArtist");
   }
 
   // Convert field names into order by statement elements
@@ -10888,10 +10760,10 @@ void CMusicDatabase::GetOrderFilter(const std::string& type, const SortDescripti
     {
       std::string artistsortSQL;
       if (StringUtils::EndsWith(name, "strArtists"))
-        artistsortSQL = SortnameBuildSQL("artistsortname", sorting.sortAttributes, "strArtists",
+        artistsortSQL = SortnameBuildSQL("artistsortname", sorting.sortAttributes, name,
                                          "strArtistSort");
       else
-        artistsortSQL = SortnameBuildSQL("artistsortname", sorting.sortAttributes, "strArtist", 
+        artistsortSQL = SortnameBuildSQL("artistsortname", sorting.sortAttributes, name,
                                          "strSortName");
       if (!artistsortSQL.empty())
       {
