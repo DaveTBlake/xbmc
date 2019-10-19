@@ -4480,18 +4480,21 @@ bool CMusicDatabase::GetAlbumsByWhere(const std::string &baseDir, const Filter &
     unsigned int time = XbmcThreads::SystemClockMillis();
     int total = -1;
 
-    std::string strSQL = "SELECT %s FROM albumview ";
-
     Filter extFilter = filter;
     CMusicDbUrl musicUrl;
     SortDescription sorting = sortDescription;
     if (!musicUrl.FromString(baseDir) || !GetFilter(musicUrl, extFilter, sorting))
       return false;
 
-    // if there are extra WHERE conditions we might need access
-    // to songview for these conditions
+    bool extended = false;
+    bool limitedInSQL =
+      extFilter.limit.empty() && (sortDescription.limitStart > 0 || sortDescription.limitEnd > 0);
+
+    // If there are extra WHERE conditions (from media filter dialog) we might 
+    // need access to songview for these conditions
     if (extFilter.where.find("songview") != std::string::npos)
     {
+      extended = true;
       extFilter.AppendJoin("JOIN songview ON songview.idAlbum = albumview.idAlbum");
       extFilter.AppendGroup("albumview.idAlbum");
     }
@@ -4500,19 +4503,51 @@ bool CMusicDatabase::GetAlbumsByWhere(const std::string &baseDir, const Filter &
     if (!BuildSQL(strSQLExtra, extFilter, strSQLExtra))
       return false;
 
-    // Apply limits and sort order directly in SQL when random sort or none
-    bool limitedInSQL = extFilter.limit.empty() &&
-      (sortDescription.sortBy == SortByNone || sortDescription.sortBy == SortByRandom) &&
-      (sortDescription.limitStart > 0 || sortDescription.limitEnd > 0);
-    if (limitedInSQL)
+    // Count number of albums that satisfy selection criteria (no limit built)
+    // Count done in full query fetch when unlimited
+    if (countOnly || limitedInSQL)
     {
-      total = (int)strtol(GetSingleValue(PrepareSQL(strSQL, "COUNT(1)") + strSQLExtra, m_pDS).c_str(), NULL, 10);
-      if (sortDescription.sortBy == SortByRandom)
-        strSQLExtra += PrepareSQL(" ORDER BY RANDOM()");
-      strSQLExtra += DatabaseUtils::BuildLimitClause(sortDescription.limitEnd, sortDescription.limitStart);
+      std::string strValue;
+      if (extended)
+      {
+        // Count distinct without group by
+        Filter countFilter = extFilter;
+        countFilter.group.clear();
+        std::string strSQLWhere;
+        if (!BuildSQL(strSQLWhere, countFilter, strSQLWhere))
+          return false;
+        strValue = GetSingleValue(
+            "SELECT COUNT(DISTINCT albumview.idAlbum) FROM albumview " + strSQLWhere, m_pDS);
+      }
+      else
+        strValue = GetSingleValue("SELECT COUNT(1) FROM albumview " + strSQLExtra, m_pDS);
+      total = static_cast<int>(strtol(strValue.c_str(), NULL, 10));
+    }
+    if (countOnly)
+    {
+      CFileItemPtr pItem(new CFileItem());
+      pItem->SetProperty("total", total);
+      items.Add(pItem);
+
+      m_pDS->close();
+      return true;
     }
 
-    strSQL = PrepareSQL(strSQL, !filter.fields.empty() && filter.fields.compare("*") != 0 ? filter.fields.c_str() : "albumview.*") + strSQLExtra;
+    // Apply any limiting directly in SQL and so sort as well
+    if (limitedInSQL)
+    {
+      extFilter.limit = DatabaseUtils::BuildLimitClauseOnly(sortDescription.limitEnd, sortDescription.limitStart);
+      // Set Orderby and add any extra fields needed for sort e.g. "artistname" scalar query
+      GetOrderFilter(MediaTypeAlbum, sortDescription, extFilter);
+      strSQLExtra.clear();
+      BuildSQL(strSQLExtra, extFilter, strSQLExtra);
+    }
+
+    std::string strSQL;
+    std::string strFields = "albumview.*";
+    if (!extFilter.fields.empty() && extFilter.fields.compare("*") != 0)
+      strFields = "albumview.*, " + extFilter.fields;
+    strSQL = "SELECT " + strFields + " FROM albumview " + strSQLExtra;
 
     // run query
     CLog::Log(LOGDEBUG, "%s query: %s", __FUNCTION__, strSQL.c_str());
@@ -4527,33 +4562,23 @@ bool CMusicDatabase::GetAlbumsByWhere(const std::string &baseDir, const Filter &
     }
     querytime = XbmcThreads::SystemClockMillis() - querytime;
 
-    // store the total value of items as a property
+    // Store the total number of albums as a property
     if (total < iRowsFound)
       total = iRowsFound;
     items.SetProperty("total", total);
-
-    if (countOnly)
-    {
-      CFileItemPtr pItem(new CFileItem());
-      pItem->SetProperty("total", total);
-      items.Add(pItem);
-
-      m_pDS->close();
-      return true;
-    }
-
+   
     DatabaseResults results;
     results.reserve(iRowsFound);
-
-    // Random order with limits already applied in SQL, just fetch results from dataset
+    // Avoid sorting when populating results when have limits so already sorted in SQL
+    // Apply sort later to fileitems list rather than dataset
     sorting = sortDescription;
-    if (limitedInSQL && sortDescription.sortBy == SortByRandom)
+    if (limitedInSQL)
       sorting.sortBy = SortByNone;
     if (!SortUtils::SortFromDataset(sorting, MediaTypeAlbum, m_pDS, results))
       return false;
 
-    // get data from returned rows
-    items.Reserve(results.size());
+    // Get albums from returned rows
+    items.Reserve(total);
     const dbiplus::query_data &data = m_pDS->get_result_set().records;
     for (const auto &i : results)
     {
@@ -4576,9 +4601,13 @@ bool CMusicDatabase::GetAlbumsByWhere(const std::string &baseDir, const Filter &
         CLog::Log(LOGERROR, "%s - out of memory getting listing (got %i)", __FUNCTION__, items.Size());
       }
     }
-
     // cleanup
     m_pDS->close();
+
+   // Finally do any sorting in items list we have not been able to do before in SQL or dataset
+    if (!limitedInSQL)
+      items.Sort(sortDescription);
+
     CLog::Log(LOGDEBUG, "{0}: Time to fill list with albums {1}ms query took {2}ms",
       __FUNCTION__, XbmcThreads::SystemClockMillis() - time, querytime);
     return true;
@@ -4601,6 +4630,7 @@ bool CMusicDatabase::GetSongsFullByWhere(const std::string &baseDir, const Filte
   {
     unsigned int time = XbmcThreads::SystemClockMillis();
     int total = -1;
+    bool extended = false;
 
     Filter extFilter = filter;
     CMusicDbUrl musicUrl;
@@ -4608,20 +4638,25 @@ bool CMusicDatabase::GetSongsFullByWhere(const std::string &baseDir, const Filte
     if (!musicUrl.FromString(baseDir) || !GetFilter(musicUrl, extFilter, sorting))
       return false;
 
-    // if there are extra WHERE conditions we might need access
-    // to songview for these conditions
+    // If there are extra WHERE conditions (from media filter dialog) we might 
+    // need access to albumview for these conditions
     if (extFilter.where.find("albumview") != std::string::npos)
     {
+      extended = true;
       extFilter.AppendJoin("JOIN albumview ON albumview.idAlbum = songview.idAlbum");
-      extFilter.AppendGroup("songview.idSong");
     }
 
     std::string strSQLExtra;
     if (!BuildSQL(strSQLExtra, extFilter, strSQLExtra))
       return false;
 
-    // Count number of songs that satisfy selection criteria
-    total = (int)strtol(GetSingleValue("SELECT COUNT(1) FROM songview " + strSQLExtra, m_pDS).c_str(), NULL, 10);
+    // Count (without group by) number of songs that satisfy selection criteria
+    std::string strValue;
+    strValue = GetSingleValue("SELECT COUNT(1) FROM songview " + strSQLExtra, m_pDS);
+    total = static_cast<int>(strtol(strValue.c_str(), NULL, 10));
+
+    if (extended)
+      extFilter.AppendGroup("songview.idSong");
 
     // Apply any limiting directly in SQL and so sort as well
     bool limitedInSQL =
@@ -4640,7 +4675,6 @@ bool CMusicDatabase::GetSongsFullByWhere(const std::string &baseDir, const Filte
     }
     strSQLExtra.clear();
     BuildSQL(strSQLExtra, extFilter, strSQLExtra);
-
 
     std::string strSQL;
     if (artistData)
@@ -5674,109 +5708,14 @@ bool CMusicDatabase::GetAlbumsByWhereJSON(const std::set<std::string>& fields, c
     // Use albumview as filter rules in where clause may use scalar query fields
     total = static_cast<int>(strtol(GetSingleValue("SELECT COUNT(1) FROM albumview " + strSQLExtra, m_pDS).c_str(), nullptr, 10));
 
-    //! @todo: use SortAttributeUseArtistSortName and remove articles
-    std::vector<std::string> orderfields;
-    std::string DESC;
-    if (sortDescription.sortOrder == SortOrderDescending)
-      DESC = " DESC";
-    if (sortDescription.sortBy == SortByRandom)
-      orderfields.emplace_back(PrepareSQL("RANDOM()")); //Adjust styntax
-    else if (sortDescription.sortBy == SortByAlbum ||
-      sortDescription.sortBy == SortByLabel ||
-      sortDescription.sortBy == SortByTitle)
-    {
-      orderfields.emplace_back("strAlbum");
-      orderfields.emplace_back("strArtists");
-    }
-    else if (sortDescription.sortBy == SortByAlbumType)
-    {
-      orderfields.emplace_back("strType");
-      orderfields.emplace_back("strAlbum");
-      orderfields.emplace_back("strArtists");
-    }
-    else if (sortDescription.sortBy == SortByArtist)
-    {
-      orderfields.emplace_back("strArtists");
-      orderfields.emplace_back("strAlbum");
-    }
-    else if (sortDescription.sortBy == SortByArtistThenYear)
-    {
-      orderfields.emplace_back("strArtists");
-      orderfields.emplace_back("iYear");
-      orderfields.emplace_back("strAlbum");
-    }
-    else if (sortDescription.sortBy == SortByYear)
-    {
-      orderfields.emplace_back("iYear");
-      orderfields.emplace_back("strAlbum");
-    }
-    else if (sortDescription.sortBy == SortByGenre)
-    {
-      orderfields.emplace_back("strGenres");
-      orderfields.emplace_back("strAlbum");
-      orderfields.emplace_back("strArtists");
-    }
-    else if (sortDescription.sortBy == SortByDateAdded)
-    {
-      orderfields.emplace_back("dateAdded");
-    }
-    else if (sortDescription.sortBy == SortByPlaycount)
-    {
-      orderfields.emplace_back("iTimesPlayed");
-      orderfields.emplace_back("strAlbum");
-      orderfields.emplace_back("strArtists");
-    }
-    else if (sortDescription.sortBy == SortByLastPlayed)
-    {
-      orderfields.emplace_back("lastPlayed");
-      orderfields.emplace_back("strAlbum");
-      orderfields.emplace_back("strArtists");
-    }
-    else if (sortDescription.sortBy == SortByRating)
-    {
-      orderfields.emplace_back("fRating");
-      orderfields.emplace_back("strAlbum");
-      orderfields.emplace_back("strArtists");
-    }
-    else if (sortDescription.sortBy == SortByVotes)
-    {
-      orderfields.emplace_back("iVotes");
-      orderfields.emplace_back("strAlbum");
-      orderfields.emplace_back("strArtists");
-    }
-    else if (sortDescription.sortBy == SortByUserRating)
-    {
-      orderfields.emplace_back("iUserrating");
-      orderfields.emplace_back("strAlbum");
-      orderfields.emplace_back("strArtists");
-    }
-    // Always sort by id to define order when other fields same
-    if (sortDescription.sortBy != SortByRandom)
-      orderfields.emplace_back("albumview.idAlbum");
-
-    // Fill inline view filter order fields, and build sort scalar subquery SQL
-    std::string artistsortSQL;
-    for (auto& name : orderfields)
-    {
-      //Add field for adjusted name sorting using sort name and ignoring articles
-      if (name.compare("strArtists") == 0)
-      {
-        artistsortSQL = SortnameBuildSQL("artistsortname", sortDescription.sortAttributes,
-          "strArtists", "strArtistSort");
-        if (!artistsortSQL.empty())
-          name = "artistsortname";
-        // Natural number case insensitve sort
-        extFilter.AppendOrder(AlphanumericSortSQL(name, sortDescription.sortOrder));
-      }
-      else if (name.compare("strAlbum") == 0 || 
-               name.compare("strType") == 0 ||
-               name.compare("strGenres") == 0)
-        // Natural number case insensitve sort
-        extFilter.AppendOrder(AlphanumericSortSQL(name, sortDescription.sortOrder));
-      else
-        extFilter.AppendOrder(name + DESC);
-    }
+    // Get order by (and any scalar query artist fields
+    GetOrderFilter(MediaTypeAlbum, sortDescription, extFilter);
     
+    // Grab and adjust artist sort field that may have been added to filter
+    // This needs to be added in the expected position in the vector
+    std::string artistsortSQL = extFilter.fields;
+    extFilter.fields.clear(); 
+
     std::string strSQL;
 
     // Setup fields to query, and album field number mapping
@@ -5808,7 +5747,7 @@ bool CMusicDatabase::GetAlbumsByWhereJSON(const std::set<std::string>& fields, c
       bool foundOrderby(false);
       bool foundJSON = fields.find(JSONtoDBAlbum[i].fieldJSON) != fields.end();
       if (!foundJSON)
-        foundOrderby = std::find(orderfields.begin(), orderfields.end(), JSONtoDBAlbum[i].fieldDB) != orderfields.end();
+        foundOrderby = extFilter.order.find(JSONtoDBAlbum[i].fieldDB) != std::string::npos;
       if (foundOrderby || foundJSON)
       {
         if (JSONtoDBAlbum[i].bSimple)
