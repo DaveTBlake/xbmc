@@ -26,7 +26,7 @@ namespace XFILE
                                 { NODE_TYPE_YEAR,                  "years",                652 },
                                 { NODE_TYPE_TOP100,                "top100",               271 },
                                 { NODE_TYPE_ALBUM_RECENTLY_ADDED,  "recentlyaddedalbums",  359 },
-                                { NODE_TYPE_ALBUM_RECENTLY_PLAYED, "recentlyplayedalbums", 517 },
+                                { NODE_TYPE_ALBUM,                 "recentlyplayedalbums", 517 },
                                 { NODE_TYPE_ALBUM,                 "compilations",         521 },
                                 { NODE_TYPE_ROLE,                  "roles",              38033 },
                                 { NODE_TYPE_SOURCE,                "sources",            39031 },

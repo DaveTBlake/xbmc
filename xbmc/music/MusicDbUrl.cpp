@@ -136,6 +136,8 @@ bool CMusicDbUrl::parse()
   // Decode legacy use of "musicdb://compilations/" path for filtered albums
   if (m_url.GetFileName() == "compilations/")
     AddOption("compilation", true);
+  else if (m_url.GetFileName() == "recentlyplayedalbums/")
+    AddOption("recentlyplayedalbums", true);
 
   return true;
 }
