@@ -226,6 +226,58 @@ CDateTime CFileUtils::GetModificationDate(const std::string& strFileNameAndPath,
   return dateAdded;
 }
 
+CDateTime CFileUtils::GetCreationDate(const std::string & strFileNameAndPath)
+{
+  CDateTime dateCreated;
+  if (strFileNameAndPath.empty())
+  {
+    CLog::Log(LOGDEBUG, "%s empty strFileNameAndPath variable", __FUNCTION__);
+    return dateCreated;
+  }
+
+  try
+  {
+    std::string file = strFileNameAndPath;
+    if (URIUtils::IsStack(strFileNameAndPath))
+      file = CStackDirectory::GetFirstStackedFile(strFileNameAndPath);
+
+    if (URIUtils::IsInArchive(file))
+      file = CURL(file).GetHostName();
+
+    // Try to get the creation datetime
+    struct __stat64 buffer;
+    if (CFile::Stat(file, &buffer) == 0 && (buffer.st_mtime != 0 || buffer.st_ctime != 0))
+    {
+      time_t now = time(NULL);
+      time_t createdTime;
+      // Prefer the creation time if it's valid, or fallback to modification time
+      if (buffer.st_ctime != 0 && (time_t)buffer.st_ctime <= now)
+        createdTime = (time_t)buffer.st_ctime;
+      else
+        createdTime = (time_t)buffer.st_mtime;
+      
+      // make sure the datetime does is not in the future
+      if (createdTime <= now)
+      {
+        struct tm *time;
+#ifdef HAVE_LOCALTIME_R
+        struct tm result = {};
+        time = localtime_r(&addedTime, &result);
+#else
+        time = localtime(&createdTime);
+#endif
+        if (time)
+          dateCreated = *time;
+      }
+    }
+  }
+  catch (...)
+  {
+    CLog::Log(LOGERROR, "%s unable to extract creation date for file (%s)", __FUNCTION__, strFileNameAndPath.c_str());
+  }
+  return dateCreated;
+}
+
 bool CFileUtils::CheckFileAccessAllowed(const std::string &filePath)
 {
   // DENY access to paths matching

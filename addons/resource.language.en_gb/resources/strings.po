@@ -14484,6 +14484,7 @@ msgctxt "#21876"
 msgid "Original TX reference"
 msgstr ""
 
+#: xbmc/playlist/SmartPlayList.cpp
 msgctxt "#21877"
 msgid "Date created"
 msgstr ""
@@ -21992,3 +21993,9 @@ msgstr ""
 msgctxt "#39118"
 msgid "Share debug log"
 msgstr ""
+
+#: xbmc/playlists/SmartPlaylist.cpp
+msgctxt "#39119"
+msgid "Last modified"
+msgstr ""
+
