@@ -881,6 +881,9 @@ void CMusicInfoTag::Serialize(CVariant& value) const
   value["playcount"] = m_iTimesPlayed;
   value["lastplayed"] = m_lastPlayed.IsValid() ? m_lastPlayed.GetAsDBDateTime() : StringUtils::Empty;
   value["dateadded"] = m_dateAdded.IsValid() ? m_dateAdded.GetAsDBDateTime() : StringUtils::Empty;
+  value["datenew"] = m_dateNew.IsValid() ? m_dateAdded.GetAsDBDateTime() : StringUtils::Empty;
+  value["datemodified"] =
+      m_dateUpdated.IsValid() ? m_dateAdded.GetAsDBDateTime() : StringUtils::Empty;
   value["lyrics"] = m_strLyrics;
   value["albumid"] = m_iAlbumId;
   value["compilationartist"] = m_bCompilation;

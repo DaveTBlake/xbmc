@@ -47,8 +47,63 @@ JSONRPC_STATUS CAudioLibrary::GetProperties(const std::string &method, ITranspor
       CMusicDatabase musicdatabase;
       if (!musicdatabase.Open())
         return InternalError;
-
       property = musicdatabase.GetLibraryLastUpdated();
+    }
+    else if (propertyName == "librarylastcleaned")
+    {
+      CMusicDatabase musicdatabase;
+      if (!musicdatabase.Open())
+        return InternalError;
+      property = musicdatabase.GetLibraryLastCleaned();
+    }
+    else if (propertyName == "artistlinksupdated")
+    {
+      CMusicDatabase musicdatabase;
+      if (!musicdatabase.Open())
+        return InternalError;
+      property = musicdatabase.GetArtistLinksUpdated();
+    }
+    else if (propertyName == "songslastadded")
+    {
+      CMusicDatabase musicdatabase;
+      if (!musicdatabase.Open())
+        return InternalError;
+      property = musicdatabase.GetSongsLastAdded();
+    }
+    else if (propertyName == "albumslastadded")
+    {
+      CMusicDatabase musicdatabase;
+      if (!musicdatabase.Open())
+        return InternalError;
+      property = musicdatabase.GetAlbumsLastAdded();
+    }
+    else if (propertyName == "artistslastadded")
+    {
+      CMusicDatabase musicdatabase;
+      if (!musicdatabase.Open())
+        return InternalError;
+      property = musicdatabase.GetArtistsLastAdded();
+    }
+    else if (propertyName == "songsmodified")
+    {
+      CMusicDatabase musicdatabase;
+      if (!musicdatabase.Open())
+        return InternalError;
+      property = musicdatabase.GetSongsLastModified();
+    }
+    else if (propertyName == "albumsmodified")
+    {
+      CMusicDatabase musicdatabase;
+      if (!musicdatabase.Open())
+        return InternalError;
+      property = musicdatabase.GetAlbumsLastModified();
+    }
+    else if (propertyName == "artistsmodified")
+    {
+      CMusicDatabase musicdatabase;
+      if (!musicdatabase.Open())
+        return InternalError;
+      property = musicdatabase.GetArtistsLastModified();
     }
 
     properties[propertyName] = property;

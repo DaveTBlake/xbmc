@@ -502,7 +502,8 @@
                 "yearsactive", "musicbrainzartistid", "fanart",
                 "thumbnail", "compilationartist", "dateadded",
                 "roles", "songgenres", "isalbumartist",
-                "sortname", "type", "gender", "disambiguation", "art", "sourceid"]
+                "sortname", "type", "gender", "disambiguation", "art", "sourceid",
+                "datemodified", "datenew" ]
     }
   },
   "Audio.Fields.Album": {
@@ -517,7 +518,7 @@
                 "compilation", "releasetype", "dateadded",
                 "sortartist", "musicbrainzreleasegroupid", "songgenres", "art",
                 "lastplayed", "sourceid","isboxset", "totaldiscs",
-                "releasedate", "originaldate"]
+                "releasedate", "originaldate", "datemodified", "datenew"]
     }
   },
   "Audio.Fields.Song": {
@@ -534,7 +535,7 @@
                 "votes", "userrating", "mood", "contributors",
                 "displaycomposer", "displayconductor", "displayorchestra", "displaylyricist",
                 "sortartist", "art", "sourceid", "disctitle", "releasedate", "originaldate",
-                "bpm"]
+                "bpm", "datemodified", "datenew" ]
     }
   },
   "Audio.Album.ReleaseType": {
@@ -681,13 +682,23 @@
   },
   "Audio.Property.Name": {
     "type": "string",
-    "enum": [ "missingartistid", "librarylastupdated" ]
+    "enum": [ "missingartistid", "librarylastupdated", "librarylastcleaned", "artistlinksupdated",
+              "songslastadded", "albumslastadded", "artistslastadded",
+			  "songsmodified", "albumsmodified", "artistsmodified"]
   },
   "Audio.Property.Value": {
     "type": "object",
     "properties": {
       "missingartistid": { "$ref": "Library.Id" },
-      "librarylastupdated": { "type": "string" }
+      "librarylastupdated": { "type": "string" },
+      "librarylastcleaned": { "type": "string" },
+      "artistlinksupdated": { "type": "string" },
+      "songslastadded": { "type": "string" },
+      "albumslastadded": { "type": "string" },
+      "artistslastadded": { "type": "string" },
+      "songsmodified": { "type": "string" },
+      "albumsmodified": { "type": "string" },
+      "artistsmodified": { "type": "string" }
     }
   },
   "Video.Fields.Movie": {
@@ -1527,7 +1538,8 @@
                 "specialsortepisode", "compilation", "releasetype", "albumreleasetype",
                 "contributors", "displaycomposer", "displayconductor", "displayorchestra", "displaylyricist",
                 "userrating", "votes", "sortartist", "musicbrainzreleasegroupid", "mediapath", "dynpath",
-                "isboxset", "totaldiscs", "disctitle", "releasedate", "originaldate", "bpm"]
+                "isboxset", "totaldiscs", "disctitle", "releasedate", "originaldate", "bpm",
+                "datemodified", "datenew" ]
     }
   },
   "List.Item.All": {
@@ -1558,7 +1570,8 @@
                 "description", "theme", "mood", "style", "albumlabel", "sorttitle",
                 "episodeguide", "uniqueid", "dateadded", "size", "lastmodified", "mimetype",
                 "specialsortseason", "specialsortepisode", "sortartist", "musicbrainzreleasegroupid",
-                "isboxset", "totaldiscs", "disctitle", "releasedate", "originaldate", "bpm"]
+                "isboxset", "totaldiscs", "disctitle", "releasedate", "originaldate", "bpm", 
+                "datemodified", "datenew"]
     }
   },
   "List.Item.File": {
