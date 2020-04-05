@@ -38,6 +38,8 @@ namespace XFILE
 
     /*! Decompress gzip encoded buffer in-memory */
     static bool DecompressGzip(const std::string& in, std::string& out);
+    /*! Compress to gzip encoded buffer in-memory */
+    static bool CompressGZip(const std::string& in, std::string& out, int compressionLevel);
 
   private:
     bool InitDecompress();

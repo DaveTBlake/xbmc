@@ -74,6 +74,7 @@ typedef struct HTTPResponseDetails {
   std::multimap<std::string, std::string> headers;
   std::string contentType;
   uint64_t totalLength;
+  std::string contentEncoding;
 } HTTPResponseDetails;
 
 class IHTTPRequestHandler

@@ -334,6 +334,7 @@ class CAdvancedSettings : public ISettingCallback, public ISettingsHandler
 
     bool m_jsonOutputCompact;
     unsigned int m_jsonTcpPort;
+    int m_jsonCompressionLevel; /*!< @brief zLib compression level from -1 to 9. (0 disable compression support) */
 
     bool m_enableMultimediaKeys;
     std::vector<std::string> m_settingsFiles;

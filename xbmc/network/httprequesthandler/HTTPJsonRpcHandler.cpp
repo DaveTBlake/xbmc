@@ -10,11 +10,14 @@
 
 #include "URL.h"
 #include "filesystem/File.h"
+#include "filesystem/ZipFile.h"
 #include "interfaces/json-rpc/JSONRPC.h"
 #include "interfaces/json-rpc/JSONServiceDescription.h"
 #include "interfaces/json-rpc/JSONUtils.h"
 #include "network/WebServer.h"
 #include "network/httprequesthandler/HTTPRequestHandlerUtils.h"
+#include "settings/AdvancedSettings.h"
+#include "settings/SettingsComponent.h"
 #include "utils/JSONVariantWriter.h"
 #include "utils/Variant.h"
 #include "utils/log.h"
@@ -97,6 +100,30 @@ int CHTTPJsonRpcHandler::HandleRequest()
     m_response.status = MHD_HTTP_BAD_REQUEST;
 
     return MHD_YES;
+  }
+
+  std::string acceptEncoding = HTTPRequestHandlerUtils::GetRequestHeaderValue(
+      m_request.connection, MHD_HEADER_KIND, MHD_HTTP_HEADER_ACCEPT_ENCODING);
+  if (isRequest && acceptEncoding.find("gzip") != std::string::npos)
+  {
+    int compressionLevel =
+        CServiceBroker::GetSettingsComponent()->GetAdvancedSettings()->m_jsonCompressionLevel;
+    if (compressionLevel != 0)
+    {
+      unsigned int time = XbmcThreads::SystemClockMillis();
+      std::string gzipAnswer;
+      auto uncompressedSize = m_responseData.size();
+      if (XFILE::CZipFile::CompressGZip(m_responseData, gzipAnswer, compressionLevel))
+      {
+        m_responseData = std::move(gzipAnswer);
+        m_response.contentEncoding = "gzip";
+        unsigned int duration = XbmcThreads::SystemClockMillis() - time;
+        if (duration > 1)
+          CLog::Log(LOGINFO, "{0} - Compress time {1}ms [{2} -> {3} R{5}:{4:.2f}]", __FUNCTION__,
+                    duration, uncompressedSize, m_responseData.size(),
+                    static_cast<float>(uncompressedSize) / m_responseData.size(), compressionLevel);
+      }
+    }
   }
 
   m_requestData.clear();

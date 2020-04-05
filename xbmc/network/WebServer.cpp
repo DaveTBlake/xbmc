@@ -362,6 +362,10 @@ int CWebServer::FinalizeRequest(const std::shared_ptr<IHTTPRequestHandler>& hand
   if (!responseDetails.contentType.empty())
     handler->AddResponseHeader(MHD_HTTP_HEADER_CONTENT_TYPE, responseDetails.contentType);
 
+  // if the request handler has set a content encoding and it hasn't been set as a header, add it
+  if (!responseDetails.contentEncoding.empty())
+    handler->AddResponseHeader(MHD_HTTP_HEADER_CONTENT_ENCODING, responseDetails.contentEncoding);
+
   // if the request handler has set a last modified date and it hasn't been set as a header, add it
   CDateTime lastModified;
   if (handler->GetLastModifiedDate(lastModified) && lastModified.IsValid())

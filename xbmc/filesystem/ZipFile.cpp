@@ -525,3 +525,40 @@ bool CZipFile::DecompressGzip(const std::string& in, std::string& out)
   inflateEnd(&strm);
   return true;
 }
+
+bool CZipFile::CompressGZip(const std::string& in, std::string& out, int compressionLevel)
+{
+  const int windowBits = MAX_WBITS + 16;
+
+  z_stream strm;
+  memset(&strm, 0, sizeof(strm));
+
+  int err = deflateInit2(&strm, compressionLevel, Z_DEFLATED, windowBits, 8, Z_DEFAULT_STRATEGY);
+  if (err != Z_OK)
+  {
+    CLog::Log(LOGERROR, "FileZip: zlib compress error %d", err);
+    return false;
+  }
+
+  strm.avail_in = static_cast<unsigned int>(in.size());
+  strm.next_in = reinterpret_cast<unsigned char*>(const_cast<char*>(in.c_str()));
+
+  char outbuffer[32768];
+  do
+  {
+    strm.next_out = reinterpret_cast<Bytef*>(outbuffer);
+    strm.avail_out = sizeof(outbuffer);
+    err = deflate(&strm, Z_FINISH);
+    if (out.size() < strm.total_out)
+      out.append(outbuffer, strm.total_out - out.size());
+  } while (err == Z_OK);
+
+  deflateEnd(&strm);
+
+  if (err != Z_STREAM_END)
+  {
+    CLog::Log(LOGERROR, "FileZip: failed to compress. zlib error %d", err);
+    return false;
+  }
+  return true;
+}

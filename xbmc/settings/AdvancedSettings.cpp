@@ -393,6 +393,7 @@ void CAdvancedSettings::Initialize()
 
   m_jsonOutputCompact = true;
   m_jsonTcpPort = 9090;
+  m_jsonCompressionLevel = 4;
 
   m_enableMultimediaKeys = false;
 
@@ -834,6 +835,7 @@ void CAdvancedSettings::ParseSettingsFile(const std::string &file)
   {
     XMLUtils::GetBoolean(pElement, "compactoutput", m_jsonOutputCompact);
     XMLUtils::GetUInt(pElement, "tcpport", m_jsonTcpPort);
+    XMLUtils::GetInt(pElement, "compressionlevel", m_jsonCompressionLevel);
   }
 
   pElement = pRootElement->FirstChildElement("samba");
