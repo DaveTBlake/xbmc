@@ -458,7 +458,12 @@ std::string ByBPM(SortAttribute attributes, const SortItem& values)
                              ByLabel(attributes, values));
 }
 
-bool preliminarySort(const SortItem &left, const SortItem &right, bool handleFolder, bool &result, std::wstring &labelLeft, std::wstring &labelRight)
+bool preliminarySort(const SortItem& left,
+                     const SortItem& right,
+                     bool handleFolder,
+                     bool& result,
+                     std::string& labelLeft,
+                     std::string& labelRight)
 {
   // make sure both items have the necessary data to do the sorting
   SortItem::const_iterator itLeftSort, itRightSort;
@@ -518,8 +523,8 @@ bool preliminarySort(const SortItem &left, const SortItem &right, bool handleFol
     }
   }
 
-  labelLeft = itLeftSort->second.asWideString();
-  labelRight = itRightSort->second.asWideString();
+  labelLeft = itLeftSort->second.asString();
+  labelRight = itRightSort->second.asString();
 
   return false;
 }
@@ -527,7 +532,7 @@ bool preliminarySort(const SortItem &left, const SortItem &right, bool handleFol
 bool SorterAscending(const SortItem &left, const SortItem &right)
 {
   bool result;
-  std::wstring labelLeft, labelRight;
+  std::string labelLeft, labelRight;
   if (preliminarySort(left, right, true, result, labelLeft, labelRight))
     return result;
 
@@ -537,7 +542,7 @@ bool SorterAscending(const SortItem &left, const SortItem &right)
 bool SorterDescending(const SortItem &left, const SortItem &right)
 {
   bool result;
-  std::wstring labelLeft, labelRight;
+  std::string labelLeft, labelRight;
   if (preliminarySort(left, right, true, result, labelLeft, labelRight))
     return result;
 
@@ -547,7 +552,7 @@ bool SorterDescending(const SortItem &left, const SortItem &right)
 bool SorterIgnoreFoldersAscending(const SortItem &left, const SortItem &right)
 {
   bool result;
-  std::wstring labelLeft, labelRight;
+  std::string labelLeft, labelRight;
   if (preliminarySort(left, right, false, result, labelLeft, labelRight))
     return result;
 
@@ -557,7 +562,7 @@ bool SorterIgnoreFoldersAscending(const SortItem &left, const SortItem &right)
 bool SorterIgnoreFoldersDescending(const SortItem &left, const SortItem &right)
 {
   bool result;
-  std::wstring labelLeft, labelRight;
+  std::string labelLeft, labelRight;
   if (preliminarySort(left, right, false, result, labelLeft, labelRight))
     return result;
 
@@ -950,8 +955,7 @@ void SortUtils::Sort(SortBy sortBy, SortOrder sortOrder, SortAttribute attribute
             item->insert(std::pair<Field, CVariant>(*field, CVariant::ConstNullVariant));
         }
 
-        std::wstring sortLabel;
-        g_charsetConverter.utf8ToW(preparator(attributes, *item), sortLabel, false);
+        std::string sortLabel = preparator(attributes, *item);
         item->insert(std::pair<Field, CVariant>(FieldSort, CVariant(sortLabel)));
       }
 
@@ -989,8 +993,7 @@ void SortUtils::Sort(SortBy sortBy, SortOrder sortOrder, SortAttribute attribute
             (*item)->insert(std::pair<Field, CVariant>(*field, CVariant::ConstNullVariant));
         }
 
-        std::wstring sortLabel;
-        g_charsetConverter.utf8ToW(preparator(attributes, **item), sortLabel, false);
+        std::string sortLabel = preparator(attributes, **item);
         (*item)->insert(std::pair<Field, CVariant>(FieldSort, CVariant(sortLabel)));
       }
 

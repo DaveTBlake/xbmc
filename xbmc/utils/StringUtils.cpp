@@ -1123,6 +1123,17 @@ int64_t StringUtils::AlphaNumericCompare(const wchar_t* left, const wchar_t* rig
   return 0; // files are the same
 }
 
+int64_t StringUtils::AlphaNumericCompare(const std::string& left, const std::string& right)
+{
+  int nKey1 = static_cast<int>(left.size());
+  int nKey2 = static_cast<int>(right.size());
+  auto uchrLeft = reinterpret_cast<unsigned char*>(const_cast<char*>(left.c_str()));
+  auto uchrRight = reinterpret_cast<unsigned char*>(const_cast<char*>(right.c_str()));
+
+  int r = AlphaNumericCollation(nKey1, uchrLeft, nKey2, uchrRight);
+  return static_cast<int64_t>(r);
+}
+
 /*
  Convert the UTF8 character to which z points into a 31-bit Unicode point.
  Return how many bytes (0 to 3) of UTF8 data encode the character.
