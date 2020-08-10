@@ -24,6 +24,7 @@
 #include "messaging/helpers/DialogHelper.h"
 #include "music/dialogs/GUIDialogInfoProviderSettings.h"
 #include "music/dialogs/GUIDialogMusicInfo.h"
+#include "music/dialogs/GUIDialogRefreshSettings.h"
 #include "music/windows/GUIWindowMusicNav.h"
 #include "music/windows/GUIWindowMusicPlaylist.h"
 #include "music/windows/GUIWindowMusicPlaylistEditor.h"
@@ -233,6 +234,7 @@ void CGUIWindowManager::CreateWindows()
   Add(new CGUIDialogLibExportSettings);
 
   Add(new CGUIDialogInfoProviderSettings);
+  Add(new CGUIDialogRefreshSettings);
 
   Add(new CGUIDialogPlayEject);
 
@@ -341,6 +343,7 @@ bool CGUIWindowManager::DestroyWindows()
     DestroyWindow(WINDOW_DIALOG_VIDEO_BOOKMARKS);
     DestroyWindow(WINDOW_DIALOG_CONTENT_SETTINGS);
     DestroyWindow(WINDOW_DIALOG_INFOPROVIDER_SETTINGS);
+    DestroyWindow(WINDOW_DIALOG_MUSICREFRESH_SETTINGS);
     DestroyWindow(WINDOW_DIALOG_LIBEXPORT_SETTINGS);
     DestroyWindow(WINDOW_DIALOG_FAVOURITES);
     DestroyWindow(WINDOW_DIALOG_SONG_INFO);

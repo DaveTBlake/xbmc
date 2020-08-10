@@ -111,6 +111,7 @@ const CWindowTranslator::WindowMapByName CWindowTranslator::WindowMappingByName 
     {"musicplaylist", WINDOW_MUSIC_PLAYLIST},
     {"musicplaylisteditor", WINDOW_MUSIC_PLAYLIST_EDITOR},
     {"infoprovidersettings", WINDOW_DIALOG_INFOPROVIDER_SETTINGS},
+    {"musicrefreshsettings", WINDOW_DIALOG_MUSICREFRESH_SETTINGS},
     {"teletext", WINDOW_DIALOG_OSD_TELETEXT},
     {"selectdialog", WINDOW_DIALOG_SELECT},
     {"musicinformation", WINDOW_DIALOG_MUSIC_INFO},

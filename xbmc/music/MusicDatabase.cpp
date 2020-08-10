@@ -11963,6 +11963,13 @@ bool CMusicDatabase::RemoveArtForItem(int mediaId, const MediaType & mediaType, 
   return result;
 }
 
+bool CMusicDatabase::RemoveArtForItem(int mediaId, const MediaType& mediaType)
+{
+  return ExecuteQuery(PrepareSQL(
+      "DELETE FROM art WHERE media_id=%i AND media_type='%s' AND art.url NOT LIKE 'image%%%%'",
+      mediaId, mediaType.c_str()));
+}
+
 bool CMusicDatabase::GetArtTypes(const MediaType &mediaType, std::vector<std::string> &artTypes)
 {
   try

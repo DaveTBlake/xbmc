@@ -44,12 +44,10 @@ bool CMusicLibraryScanningJob::operator==(const CJob* job) const
 bool CMusicLibraryScanningJob::Work(CMusicDatabase &db)
 {
   m_scanner.ShowDialog(m_showProgress);
-  if (m_flags & MUSIC_INFO::CMusicInfoScanner::SCAN_ALBUMS)
-    // Scrape additional album information
-    m_scanner.FetchAlbumInfo(m_directory, m_flags & MUSIC_INFO::CMusicInfoScanner::SCAN_RESCAN);
-  else if (m_flags & MUSIC_INFO::CMusicInfoScanner::SCAN_ARTISTS)
-    // Scrape additional artist information
-    m_scanner.FetchArtistInfo(m_directory, m_flags & MUSIC_INFO::CMusicInfoScanner::SCAN_RESCAN);
+  if ((m_flags & MUSIC_INFO::CMusicInfoScanner::SCAN_ALBUMS) ||
+      (m_flags & MUSIC_INFO::CMusicInfoScanner::SCAN_ARTISTS))
+    // Fetch additional artist or album information and artwork
+    m_scanner.FetchInformation(m_directory, m_flags);
   else
     // Scan tags from music files, and optionally scrape artist and album info
     m_scanner.Start(m_directory, m_flags);

@@ -66,7 +66,6 @@ msgstr ""
 
 #: Unknown
 #: xbmc/music/windows/GUIWindowMusicBase.cpp
-#: xbmc/music/windows/GUIWindowMusicNav.cpp
 #: xbmc/video/windows/GUIWindowVideoBase.cpp
 #: xbmc/windows/GUIWindowFileManager.cpp
 msgctxt "#6"
@@ -8824,6 +8823,7 @@ msgstr ""
 #. Label for a context menu entry that opens a submenu with further actions for the selected item
 #: xbmc/pvr/windows/GUIWindowPVRChannels.cpp
 #: xbmc/video/windows/GUIWindowVideoNav.cpp
+#: xbmc/music/windows/GUIWindowMusicNav.cpp
 msgctxt "#16106"
 msgid "Manage..."
 msgstr ""
@@ -11980,10 +11980,7 @@ msgctxt "#20058"
 msgid "Add profile..."
 msgstr ""
 
-#. Context menu entry
-msgctxt "#20059"
-msgid "Query info for all albums"
-msgstr ""
+#empty string with id 20059
 
 #: addons/skin.estuary/xml/Variables.xml
 msgctxt "#20060"
@@ -14554,9 +14551,7 @@ msgctxt "#21883"
 msgid "Saved music"
 msgstr ""
 
-msgctxt "#21884"
-msgid "Query info for all artists"
-msgstr ""
+#empty string with id 21884
 
 msgctxt "#21885"
 msgid "Downloading album information"
@@ -21811,6 +21806,7 @@ msgstr ""
 
 #. Group header describing the settings
 #: xbmc/music/dialogs/GUIDialogInfoProviderSettings.cpp
+#: xbmc/music/dialogs/GUIDialogRefreshSettings.cpp
 msgctxt "#38337"
 msgid "Options for fetching additional information"
 msgstr ""
@@ -22247,4 +22243,135 @@ msgstr ""
 #: system/settings/settings.xml
 msgctxt "#39142"
 msgid "Custom"
+msgstr ""
+msgstr ""
+
+#. Context menu entry
+#: xbmc/music/windows/GUIWindowMusicNav.cpp
+msgctxt "#39147"
+msgid "Refresh information and artwork"
+msgstr ""
+
+#. Dialog heading
+#: xbmc/music/dialogs/GUIDialogRefreshSettings.cpp
+msgctxt "#39148"
+msgid "Refresh artist information and artwork"
+msgstr ""
+
+#. Dialog heading
+#: xbmc/music/dialogs/GUIDialogRefreshSettings.cpp
+msgctxt "#39149"
+msgid "Refresh album information and artwork"
+msgstr ""
+
+#. Item in selection list indicating do action on selected specific artist
+#: xbmc/music/dialogs/GUIDialogRefreshSettings.cpp
+msgctxt "#39150"
+msgid "This artist"
+msgstr ""
+
+#. Item in selection list indicating do action on all artists in node
+#: xbmc/music/dialogs/GUIDialogRefreshSettings.cpp
+msgctxt "#39151"
+msgid "All artists shown"
+msgstr ""
+
+#. Item in selection list indicating do action on all artists in library
+#: xbmc/music/dialogs/GUIDialogRefreshSettings.cpp
+msgctxt "#39152"
+msgid "All artists in library"
+msgstr ""
+
+#. Item in selection list indicating do action on selected specific album
+#: xbmc/music/dialogs/GUIDialogRefreshSettings.cpp
+msgctxt "#39153"
+msgid "This album"
+msgstr ""
+
+#. Item in selection list indicating do action on all albums in node
+#: xbmc/music/dialogs/GUIDialogRefreshSettings.cpp
+msgctxt "#39154"
+msgid "All albums shown"
+msgstr ""
+
+#. Item in selection list indicating do action on all albums in library
+#: xbmc/music/dialogs/GUIDialogRefreshSettings.cpp
+msgctxt "#39155"
+msgid "All albums in library"
+msgstr ""
+
+#: xbmc/music/dialogs/GUIDialogRefreshSettings.cpp
+msgctxt "#39157"
+msgid "Refresh..."
+msgstr ""
+
+#. Heading when selecting from list for #39147
+#: xbmc/music/dialogs/GUIDialogRefreshSettings.cpp
+msgctxt "#39158"
+msgid "Refresh information and artwork for"
+msgstr ""
+
+#. Toggle scraping option - skip scraped artists
+#: xbmc/music/dialogs/GUIDialogRefreshSettings.cpp
+msgctxt "#39159"
+msgid "Skip those artists with previously fetched information"
+msgstr ""
+
+#. Toggle scraping option - skip scraped albums
+#: xbmc/music/dialogs/GUIDialogRefreshSettings.cpp
+msgctxt "#39160"
+msgid "Skip those albums with previously fetched information"
+msgstr ""
+
+#. Toggle scraping option
+#: xbmc/music/dialogs/GUIDialogRefreshSettings.cpp
+msgctxt "#39161"
+msgid "Ignore NFO files and fetch remote information"
+msgstr ""
+
+#. Toggle scraping option
+#: xbmc/music/dialogs/GUIDialogRefreshSettings.cpp
+msgctxt "#39162"
+msgid "Replace currently selected artwork"
+msgstr ""
+
+#. Indication of what is going to be refreshed - single artist
+#: xbmc/music/dialogs/GUIDialogRefreshSettings.cpp
+msgctxt "#39163"
+msgid "Refresh information and artwork for this artist now?"
+msgstr ""
+
+#. Indication of what is going to be refreshed - many artists
+#: xbmc/music/dialogs/GUIDialogRefreshSettings.cpp
+msgctxt "#39164"
+msgid "Refresh information and artwork for all these artists now?"
+msgstr ""
+
+#. Indication of what is going to be refreshed - single album
+#: xbmc/music/dialogs/GUIDialogRefreshSettings.cpp
+msgctxt "#39165"
+msgid "Refresh information and artwork for this album now?"
+msgstr ""
+
+#. Indication of what is going to be refreshed - many albums
+#: xbmc/music/dialogs/GUIDialogRefreshSettings.cpp
+msgctxt "#39166"
+msgid "Refresh information and artwork for all these albums now?"
+msgstr ""
+
+#. Toggle scraping option
+#: xbmc/music/dialogs/GUIDialogRefreshSettings.cpp
+msgctxt "#39171"
+msgid "Replace all previously fetched artist information"
+msgstr ""
+
+#. Toggle scraping option
+#: xbmc/music/dialogs/GUIDialogRefreshSettings.cpp
+msgctxt "#39172"
+msgid "Replace all previously fetched album information"
+msgstr ""
+
+#: xbmc/music/dialogs/GUIDialogRefreshSettings.cpp
+msgctxt "#39173"
+msgid "Merge Options (Access settings controling fields overwritten)"
 msgstr ""

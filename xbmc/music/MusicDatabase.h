@@ -649,6 +649,15 @@ public:
   */
   bool RemoveArtForItem(int mediaId, const MediaType &mediaType, const std::set<std::string> &artTypes);
 
+  /*! \brief Remove art for a database item.
+  Removes all artwork except embedded images for a database item.
+  \param mediaId the id in the media (song/artist/album) table.
+  \param mediaType the type of media, which corresponds to the table the item resides in (song/artist/album).
+  \return true if art is removed, false if no art is found.
+  \sa RemoveArtForItem
+  */
+  bool RemoveArtForItem(int mediaId, const MediaType& mediaType);
+
   /*! \brief Fetch the distinct types of art held in the database for a type of media.
   \param mediaType the type of media, which corresponds to the table the item resides in (song/artist/album).
   \param artTypes [out] the types of art e.g. "thumb", "fanart", etc.

@@ -28,12 +28,18 @@ class CMusicInfoScanner : public IRunnable, public CInfoScanner
 public:
   /*! \brief Flags for controlling the scanning process
    */
-  enum SCAN_FLAGS { SCAN_NORMAL     = 0,
-                    SCAN_ONLINE     = 1 << 0,
-                    SCAN_BACKGROUND = 1 << 1,
-                    SCAN_RESCAN     = 1 << 2,
-                    SCAN_ARTISTS    = 1 << 3,
-                    SCAN_ALBUMS     = 1 << 4 };
+  enum SCAN_FLAGS
+  {
+    SCAN_NORMAL = 0,
+    SCAN_ONLINE = 1 << 0,
+    SCAN_BACKGROUND = 1 << 1,
+    SCAN_RESCAN = 1 << 2,
+    SCAN_ARTISTS = 1 << 3,
+    SCAN_ALBUMS = 1 << 4,
+    SCAN_INGORENFO = 1 << 5,
+    SCAN_REPLACEART = 1 << 6,
+    SCAN_NOTMETADATA = 1 << 7,
+  };
 
   CMusicInfoScanner();
   ~CMusicInfoScanner() override;
@@ -41,6 +47,7 @@ public:
   void Start(const std::string& strDirectory, int flags);
   void FetchAlbumInfo(const std::string& strDirectory, bool refresh = false);
   void FetchArtistInfo(const std::string& strDirectory, bool refresh = false);
+  void FetchInformation(const std::string& strDirectory, int flags);
   void Stop();
 
   /*! \brief Categorize FileItems into Albums, Songs, and Artists
