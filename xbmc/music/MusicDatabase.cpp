@@ -11289,7 +11289,13 @@ void CMusicDatabase::ImportFromXML(const std::string& xmlFile, CGUIDialogProgres
         {
           CArtist artist;
           GetArtist(idArtist, artist, true); // include discography
-          artist.MergeScrapedArtist(importedArtist, true);
+          artist.MergeScrapedArtist(importedArtist, "");  //All scraped only fields overwritten
+          if (!importedArtist.strArtist.empty() || artist.strArtist.empty())
+            artist.strArtist = importedArtist.strArtist;
+          if (!importedArtist.strSortName.empty() || artist.strSortName.empty())
+            artist.strSortName = importedArtist.strSortName;
+          if (!importedArtist.art.empty())
+            artist.art = importedArtist.art;
           UpdateArtist(artist);
         }
         else

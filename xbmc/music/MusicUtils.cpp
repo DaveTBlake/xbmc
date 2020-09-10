@@ -377,4 +377,50 @@ namespace MUSIC_UTILS
                                   StringUtils::isasciialphanum) == potentialArtType.end();
   }
 
+  void GetFieldTranslations(const MediaType& mediaType,
+    std::vector<std::pair<std::string, int>>& fieldpairs)
+  {
+    if (mediaType == "album")
+    {
+      fieldpairs.emplace_back("album", 558);
+      fieldpairs.emplace_back("albumartist", 566);
+      fieldpairs.emplace_back("review", 183);
+      fieldpairs.emplace_back("themes", 1895);
+      fieldpairs.emplace_back("type", 564);
+      fieldpairs.emplace_back("compilation", 204);
+      fieldpairs.emplace_back("label", 21899);
+      fieldpairs.emplace_back("title", 556);
+      fieldpairs.emplace_back("sorttitle", 171);
+      fieldpairs.emplace_back("originaltitle", 20376);
+      fieldpairs.emplace_back("year", 562);
+      fieldpairs.emplace_back("rating", 563);
+      fieldpairs.emplace_back("userrating", 38018);
+      fieldpairs.emplace_back("votes", 205);
+      fieldpairs.emplace_back("isboxset", 38074);
+      fieldpairs.emplace_back("totaldiscs", 38077);
+      fieldpairs.emplace_back("albumstatus", 38081);
+      fieldpairs.emplace_back("albumduration", 180);
+    }
+    else if (mediaType == "artist")
+    {
+      fieldpairs.emplace_back("artist", 557);
+      fieldpairs.emplace_back("artisttype", 564);
+      fieldpairs.emplace_back("gender", 39025);
+      fieldpairs.emplace_back("disambiguation", 39026);
+      fieldpairs.emplace_back("genre", 515);
+      fieldpairs.emplace_back("biography", 21887);
+      fieldpairs.emplace_back("moods", 175);
+      fieldpairs.emplace_back("styles", 176);
+      fieldpairs.emplace_back("instruments", 21892);
+      fieldpairs.emplace_back("born", 21893);
+      fieldpairs.emplace_back("bandformed", 21894);
+      fieldpairs.emplace_back("died", 21897);
+      fieldpairs.emplace_back("disbanded", 21896);
+      fieldpairs.emplace_back("yearsactive", 21896);
+      fieldpairs.emplace_back("discography", 21896);
+      fieldpairs.emplace_back("arturls", 21896);
+    }
+  }
+
+
   } // namespace MUSIC_UTILS

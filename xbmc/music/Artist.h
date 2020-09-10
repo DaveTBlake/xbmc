@@ -49,6 +49,7 @@ public:
   }
 
   void MergeScrapedArtist(const CArtist& source, bool override = true);
+  void MergeScrapedArtist(const CArtist& source, const std::string& strReplaceFields);
 
   void Reset()
   {

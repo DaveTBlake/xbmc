@@ -58,6 +58,7 @@ protected:
 
 private:
   void ResetDefaults();
+  bool ChooseMergeOptions();
 
   MediaType m_mediaType = MediaTypeAlbum;
   bool m_bFixedApply = false;
@@ -65,6 +66,6 @@ private:
   bool m_bReplaceAll = true;
   bool m_bIgnoreNFOFiles = false;
   bool m_bReplaceArt = false;
-
+  std::string m_strOverwriteFields;
   unsigned int m_applyToItems = REFRESH_ALLVIEW;
 };

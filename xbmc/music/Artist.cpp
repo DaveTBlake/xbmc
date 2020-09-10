@@ -64,6 +64,135 @@ void CArtist::MergeScrapedArtist(const CArtist& source, bool override /* = true 
   discography = source.discography;
 }
 
+void CArtist::MergeScrapedArtist(const CArtist& source, const std::string& strReplaceFields)
+{
+  /*
+  Initial scraping of artist information when the mbid is derived from tags is done directly
+  using that ID, otherwise the lookup is based on name and can mis-identify the artist
+  (many have same name). It is useful to store the scraped mbid, but we need to be
+  able to correct any mistakes. Hence a manual refresh of artist information uses either
+  the mbid is derived from tags or the artist name, not any previously scraped mbid.
+
+   A Musicbrainz artist ID derived from music file tags is always taken as accurate and so can
+   not be overwritten by a scraped value. When the artist does not already have an mbid or has
+   a previously scraped mbid, merge the new scraped value, flagging it as being from the
+   scraper rather than derived from music file tags.
+   */
+  if (!source.strMusicBrainzArtistID.empty() && (strMusicBrainzArtistID.empty() || bScrapedMBID))
+  {
+    strMusicBrainzArtistID = source.strMusicBrainzArtistID;
+    bScrapedMBID = true;
+  }
+
+  // Only full empty artist name and sortname values
+  if (strArtist.empty())
+    strArtist = source.strArtist;
+  if (strSortName.empty())
+    strSortName = source.strSortName;
+
+  bool bType(true);
+  bool bGender(true);
+  bool bDisambiguation(true);
+  bool bGenre(true);
+  bool bBio(true);
+  bool bStyles(true);
+  bool bMoods(true);
+  bool bInstruments(true);
+  bool bBorn(true); 
+  bool bFormed(true);
+  bool bDied(true); 
+  bool bDisbanded(true);
+  bool bYearsActive(true);
+  bool bArtURL(true);
+  bool bDiscography(true);
+  
+  std::vector<std::string> fields;
+  if (!strReplaceFields.empty())
+  {
+    bType = false;
+    bGender = false;
+    bDisambiguation = false;
+    bGenre = false;
+    bBio = false;
+    bStyles = false;
+    bMoods = false;
+    bInstruments = false;
+    bBorn = false;
+    bFormed = false;
+    bDied = false;
+    bDisbanded = false;
+    bYearsActive = false;
+    bArtURL = false;
+    bDiscography = false;
+    fields = StringUtils::Split(strReplaceFields, ",");
+    for (const auto& f : fields)
+    {
+      if (f == "type")
+        bType = true;
+      else if (f == "gender")
+        bGender = true;
+      else if (f == "disambiguation")
+        bDisambiguation = true;
+      else if (f == "genre")
+        bGenre = true;
+      else if (f == "biography")
+        bBio = true;
+      else if (f == "styles")
+        bStyles = true;
+      else if (f == "moods")
+        bMoods = true;
+      else if (f == "instruments")
+        bInstruments = true;
+      else if (f == "born")
+        bBorn = true;
+      else if (f == "formed")
+        bFormed = true;
+      else if (f == "died")
+        bDied = true;
+      else if (f == "disbanded")
+        bDisbanded = true;
+      else if (f == "yearsactive")
+        bYearsActive = true;
+      else if (f == "art")
+        bArtURL = true;
+      else if (f == "Discography")
+      bDiscography = true;
+    }
+  }
+
+  if (bType || strType.empty())
+    strType = source.strType;
+  if (bGender || strGender.empty())
+    strGender = source.strGender;
+  if (bDisambiguation || strDisambiguation.empty())
+    strDisambiguation = source.strDisambiguation;
+  if (bGenre || genre.empty())
+    genre = source.genre;
+  if (bBio || strBiography.empty())
+    strBiography = source.strBiography;
+  if (bStyles || styles.empty())
+    styles = source.styles;
+  if (bMoods || moods.empty())
+    moods = source.moods;
+  if (bInstruments || instruments.empty())
+    instruments = source.instruments;
+  if (bBorn || strBorn.empty())
+    strBorn = source.strBorn;
+  if (bFormed || strFormed.empty())
+    strFormed = source.strFormed;
+  if (bDied || strDied.empty())
+    strDied = source.strDied;
+  if (bDisbanded || strDisbanded.empty())
+    strDisbanded = source.strDisbanded;
+  if (bYearsActive || yearsActive.empty())
+    yearsActive = source.yearsActive;
+  if (bArtURL || !thumbURL.HasData())
+    thumbURL = source.thumbURL; // Available remote thumbs
+  if (bArtURL || fanart.GetNumFanarts() == 0)
+    fanart = source.fanart;  // Available remote fanart  
+  if (bDiscography || discography.empty())
+    discography = source.discography;
+}
 
 bool CArtist::Load(const TiXmlElement *artist, bool append, bool prioritise)
 {

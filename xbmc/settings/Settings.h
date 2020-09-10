@@ -209,6 +209,7 @@ public:
   static const std::string SETTING_MUSICLIBRARY_ALBUMART_WHITELIST;
   static const std::string SETTING_MUSICLIBRARY_MUSICTHUMBS;
   static const std::string SETTING_MUSICLIBRARY_ARTSETTINGS_UPDATED;
+  static const std::string SETTING_MUSICLIBRARY_ARTIST_MERGEFIELDS;
   static const std::string SETTING_MUSICLIBRARY_ALBUMSSCRAPER;
   static const std::string SETTING_MUSICLIBRARY_ARTISTSSCRAPER;
   static const std::string SETTING_MUSICLIBRARY_OVERRIDETAGS;

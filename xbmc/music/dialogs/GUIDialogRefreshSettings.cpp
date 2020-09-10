@@ -8,9 +8,11 @@
 
 #include "GUIDialogRefreshSettings.h"
 
+#include "dialogs/GUIDialogSelect.h"
 #include "guilib/GUIComponent.h"
 #include "guilib/GUIWindowManager.h"
 #include "guilib/LocalizeStrings.h"
+#include "music/MusicUtils.h"
 #include "music/infoscanner/MusicInfoScanner.h"
 #include "settings/Settings.h"
 #include "settings/SettingsComponent.h"
@@ -47,6 +49,14 @@ int CGUIDialogRefreshSettings::Show(const MediaType& mediatype, int& flags, int 
   if (mediatype != MediaTypeAlbum && mediatype != MediaTypeArtist)
     return -1;
 
+  const std::shared_ptr<CSettings> pSettings =
+      CServiceBroker::GetSettingsComponent()->GetSettings();
+  if (mediatype == MediaTypeAlbum)
+    dialog->m_strOverwriteFields =
+        pSettings->GetString(CSettings::SETTING_MUSICLIBRARY_ARTIST_MERGEFIELDS);
+  else
+    dialog->m_strOverwriteFields =
+        pSettings->GetString(CSettings::SETTING_MUSICLIBRARY_ARTIST_MERGEFIELDS);
   dialog->m_mediaType = mediatype;
   if (fixedApply >= 0)
   {
@@ -117,12 +127,56 @@ void CGUIDialogRefreshSettings::OnSettingAction(std::shared_ptr<const CSetting> 
   if (settingId == SETTING_MERGEOPTIONS)
   {
     //!@Todo: Show album or artist merge settings dialog that doesn't exist yet
+    ChooseMergeOptions();
   }
 }
 
+bool CGUIDialogRefreshSettings::ChooseMergeOptions()
+{
+  CGUIDialogSelect *dialog = CServiceBroker::GetGUI()->GetWindowManager().GetWindow<CGUIDialogSelect>(WINDOW_DIALOG_SELECT);
+  if (!dialog)
+    return false;
+  dialog->Reset();
+  dialog->SetHeading(CVariant{ 39173 });
+
+  std::vector<std::pair<std::string, int>> fieldpairs;
+  MUSIC_UTILS::GetFieldTranslations(m_mediaType,  fieldpairs);
+  
+  std::vector<int> selectedIndexes;
+  int j = 0;
+  for (auto& field : fieldpairs)
+  {
+    dialog->Add(g_localizeStrings.Get(field.second));
+    selectedIndexes.emplace_back(j);
+    j++;
+  }
+  // Convert current merge fields setting to indexes
+  dialog->SetSelected(selectedIndexes);
+  dialog->SetMultiSelection(true);
+  dialog->Open();
+  if (!dialog->IsConfirmed())
+    return false;
+
+  std::vector<int> newSelected = dialog->GetSelectedItems();
+  m_strOverwriteFields.clear();
+  for (const auto i : newSelected)
+  {
+    if (!m_strOverwriteFields.empty())
+      m_strOverwriteFields += ",";
+    m_strOverwriteFields += fieldpairs[i].first;
+  }
+  return true;
+}
+
+
 void CGUIDialogRefreshSettings::Save()
 {
-  return; //Save done by caller of ::Show
+  const std::shared_ptr<CSettings> settings = CServiceBroker::GetSettingsComponent()->GetSettings();
+  if (m_mediaType == MediaTypeAlbum)
+    settings->SetString(CSettings::SETTING_MUSICLIBRARY_ARTIST_MERGEFIELDS, m_strOverwriteFields);
+  else
+    settings->SetString(CSettings::SETTING_MUSICLIBRARY_ARTIST_MERGEFIELDS, m_strOverwriteFields);
+  settings->Save();
 }
 
 void CGUIDialogRefreshSettings::SetupView()
@@ -270,4 +324,5 @@ void CGUIDialogRefreshSettings::ResetDefaults()
   m_bReplaceAll = true;
   m_bIgnoreNFOFiles = false;
   m_bReplaceArt = false;
+  m_strOverwriteFields.clear();
 }

@@ -1488,9 +1488,9 @@ CMusicInfoScanner::UpdateDatabaseArtistInfo(CArtist& artist,
       // Remove art accidentally set by the Python scraper, it only provides URLs of possible art
       // Art is selected later applying whitelist and other art preferences
       artistInfo.GetArtist().art.clear();
-      artist.MergeScrapedArtist(artistInfo.GetArtist(),
-                                CServiceBroker::GetSettingsComponent()->GetSettings()->GetBool(
-                                    CSettings::SETTING_MUSICLIBRARY_OVERRIDETAGS));
+      artist.MergeScrapedArtist(artistInfo.GetArtist(), ""); // All scraped only fields overwritten
+      //@! Todo: read fields from settings
+      //CServiceBroker::GetSettingsComponent()->GetSettings()->GetBool(CSettings::SETTING_MUSICLIBRARY_OVERRIDETAGS));
       m_musicDatabase.UpdateArtist(artist);
       artistInfo.SetLoaded();
     }

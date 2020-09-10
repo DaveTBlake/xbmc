@@ -243,6 +243,7 @@ const std::string CSettings::SETTING_MUSICLIBRARY_ALBUMART_WHITELIST =
     "musiclibrary.albumartwhitelist";
 const std::string CSettings::SETTING_MUSICLIBRARY_MUSICTHUMBS = "musiclibrary.musicthumbs";
 const std::string CSettings::SETTING_MUSICLIBRARY_ARTSETTINGS_UPDATED = "musiclibrary.artsettings";
+const std::string CSettings::SETTING_MUSICLIBRARY_ARTIST_MERGEFIELDS = "musiclibrary.artistmergefields";
 const std::string CSettings::SETTING_MUSICLIBRARY_ALBUMSSCRAPER = "musiclibrary.albumsscraper";
 const std::string CSettings::SETTING_MUSICLIBRARY_ARTISTSSCRAPER = "musiclibrary.artistsscraper";
 const std::string CSettings::SETTING_MUSICLIBRARY_OVERRIDETAGS = "musiclibrary.overridetags";

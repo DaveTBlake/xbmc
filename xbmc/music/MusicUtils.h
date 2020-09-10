@@ -71,4 +71,6 @@ namespace MUSIC_UTILS
  */
   bool IsValidArtType(const std::string& potentialArtType);
 
+  void GetFieldTranslations(const MediaType& mediaType, std::vector<std::pair<std::string, int>>& fieldpairs);
+
   } // namespace MUSIC_UTILS
